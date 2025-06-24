@@ -1,10 +1,16 @@
 const mongoose = require('mongoose');
 
-const userSchema = new mongoose.Schema({
-  name: String,
-  phone: String,
-  step: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now }
+const userSchema = new mongoose.Schema({ 
+  
+  name: { type: String, required: false },
+    
+  phone: { type: String, required: true },
+ 
+  status: String, // active, finished 
+  
+ 
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('User', userSchema);

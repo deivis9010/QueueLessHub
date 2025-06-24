@@ -2,7 +2,7 @@
 const User = require('../models/user.model');
 const Appointment = require('../models/appointment.model');
 const Conversation = require('../models/conversation.model');
-
+const { handleChatFlow } = require('../services/chatflow.service');
 
 
 
@@ -28,81 +28,65 @@ exports.getWebhook = (req, res) => {
 
 
 exports.postWebhook = async (req, res) => {
-  const body = req.body;
+  try {
+    const body = req.body; // El cuerpo del webhook de WhatsApp
 
-  const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-  const from = message?.from;
-  const msgBody = message?.text?.body;
-  console.log('📬 Mensaje recibido:', body);
-  console.log('📬 telefono:', from);
-  if (from && msgBody) {
-    console.log(`📨 Mensaje de ${from}: ${msgBody}`);
+    // Asume que solo procesas el primer entry y el primer change
+    if (body.object === 'whatsapp_business_account' && body.entry && body.entry[0] && body.entry[0].changes && body.entry[0].changes[0] && body.entry[0].changes[0].value.messages) {
+      const message = body.entry[0].changes[0].value.messages[0];
+      const from = message.from; // Número de teléfono del remitente
+      const type = message.type; // Tipo de mensaje (text, interactive, etc.)
 
-    try {
-    await axios.post(
-        `https://graph.facebook.com/v23.0/${process.env.PHONE_NUMBER_ID}/messages`, // O v2.20 si eso es lo correcto
+      let text = '';
+      let interactive = null;
+
+      // Extraer el contenido del mensaje según el tipo
+      if (type === 'text') {
+        text = message.text.body;
+      } else if (type === 'interactive') {
+        interactive = message.interactive;
+        // Para mensajes interactivos, el 'text' de la payload entrante a veces es irrelevante o vacío,
+        // el dato importante es el id del botón/fila que estará en message.interactive.
+        // Puedes pasar un texto dummy o dejarlo vacío, ya que handleChatFlow usará el 'interactive.id'.
+        text = interactive.button_reply?.id || interactive.list_reply?.id || '';
+      } else {
+        // Manejar otros tipos de mensajes si es necesario (audio, imagen, etc.)
+        console.log(`Tipo de mensaje no soportado: ${type}`);
+        return res.sendStatus(200); // Responder 200 OK para evitar reintentos
+      }
+
+      // Llama a tu función de flujo de chat
+      const responsePayload = await handleChatFlow({ from, text, type, interactive });
+
+      // Envía la respuesta a la API de WhatsApp
+      await axios.post(
+        `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
+        responsePayload,
         {
-            messaging_product: 'whatsapp',
-            to: from,
-            type: 'text',
-            text: { body: `Hola 👋, recibimos tu mensaje: "${msgBody}"` },
-        },
-        {
-            headers: {
-                Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-                'Content-Type': 'application/json',
-            },
+          headers: {
+            'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
         }
-    );
-    console.log('✅ Mensaje de respuesta enviado exitosamente.');
-} catch (error) {
-    console.error('❌ Error al enviar mensaje de WhatsApp:', error.message); // Muestra el mensaje general de Axios
-    // ¡ESTA LÍNEA ES FUNDAMENTAL AHORA MISMO!
-    if (error.response && error.response.data) {
-        console.error('❌ Detalles del error de la API de Meta:', JSON.stringify(error.response.data, null, 2));
+      );
+
+      return res.status(200).send('Mensaje procesado y respuesta enviada.');
+
     } else {
-        console.error('❌ No se recibieron detalles de error específicos de la API de Meta.');
+      // Si el webhook no es un mensaje (ej: cambio de estado, lectura)
+      console.log('Webhook recibido no es un mensaje:', body);
+      return res.status(200).send('Evento de webhook no procesado (no es un mensaje).');
     }
-}
-  }
 
-  res.sendStatus(200);
+  } catch (error) {
+    console.error('Error al procesar webhook:', error.response ? error.response.data : error.message);
+    res.status(500).send('Error interno del servidor.');
+  }
 };
 
 
 
 
-exports.handleWebhook = async (req, res) => {
-  const { from, text } = req.body;
-  if (!from || !text) return res.status(400).json({ error: 'Faltan datos' });
-
-  let user = await User.findOne({ phone: from });
-  if (!user) user = await User.create({ phone: from, name: from });
-
-  // Lógica de conversación mock
-  let response = '';
-  if (user.step === 0) {
-    response = 'Hola, ¿quieres agendar una cita?';
-    user.step = 1;
-  } else if (user.step === 1 && text.toLowerCase().includes('sí')) {
-    response = '¿Qué día quieres tu cita?';
-    user.step = 2;
-  } else if (user.step === 2) {
-    await Appointment.create({ user: user._id, date: new Date(), confirmed: true });
-    response = '¡Cita registrada!';
-    user.step = 0;
-  } else {
-    response = 'No entendí, ¿quieres agendar una cita?';
-    user.step = 1;
-  }
-  await user.save();
-  await Conversation.findOneAndUpdate(
-    { user: user._id },
-    { state: `step${user.step}`, lastMessage: text, updatedAt: new Date() },
-    { upsert: true }
-  );
-  res.json({ reply: response });
-};
 
 
 

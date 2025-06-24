@@ -10,7 +10,7 @@ router.post('/webhook', botController.postWebhook);
 
 router.get('/webhook', botController.getWebhook);
 
-router.post('/handleWebhook', botController.handleWebhook);
+
 
 
 // Endpoints de testing
@@ -20,6 +20,7 @@ router.get('/appointments', async (req, res) => {
 });
 
 router.get('/users', async (req, res) => {
+  console.log('🔗 Endpoint /users accedido');
   const users = await User.find();
   res.json(users);
 });

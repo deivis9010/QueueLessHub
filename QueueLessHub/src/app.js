@@ -12,12 +12,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Endpoint de prueba
-app.get('/ping', (req, res) => {
-  res.send('pong');
-});
 
-app.use('/', apiRoutes);
+
+app.use('/api', apiRoutes);
 
 // Middleware de manejo de errores
 app.use((err, req, res, next) => {
