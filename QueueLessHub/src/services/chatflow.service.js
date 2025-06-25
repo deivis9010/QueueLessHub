@@ -3,37 +3,42 @@ const User = require('../models/user.model');
 const Appointment = require('../models/appointment.model');
 
 /**
- * Función auxiliar para generar los próximos N días.
- * @param {number} numDays - Número de días a generar.
+ * Función auxiliar para generar los próximos N días hábiles (lunes a viernes).
+ * @param {number} numDays - Número de días hábiles a generar.
  * @returns {Array<Object>} Un array de objetos con id, title, y description para List Messages.
  */
 const generateNextNDays = (numDays) => {
   const dates = [];
+  let i = 0;
+  let daysChecked = 0;
   // Asegurarse de no exceder el límite de 10 filas para los List Messages de WhatsApp
   const limit = Math.min(numDays, 10);
-  for (let i = 0; i < limit; i++) {
+  while (dates.length < limit && daysChecked < 31) { // Máximo 31 días para evitar bucles infinitos
     const date = new Date();
     date.setDate(date.getDate() + i); // Añade 'i' días a la fecha actual
+    const dayOfWeek = date.getDay(); // 0: domingo, 1: lunes, ..., 5: viernes, 6: sábado
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Solo lunes a viernes
+      // Formato 'YYYY-MM-DD' para el ID
+      const dateId = date.toISOString().split('T')[0];
 
-    // Formato 'YYYY-MM-DD' para el ID
-    const dateId = date.toISOString().split('T')[0];
+      // Formato legible para el título (más corto para cumplir con el límite de 24 caracteres)
+      const weekdayShort = date.toLocaleDateString('es-ES', { weekday: 'short' });
+      const dayMonth = date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+      // Nuevo title: "Lun, 01/01" o "Mar, 15/12"
+      const shortTitle = `${weekdayShort.charAt(0).toUpperCase() + weekdayShort.slice(1)}, ${dayMonth}`;
 
-    // Formato legible para el título (más corto para cumplir con el límite de 24 caracteres)
-    const weekdayShort = date.toLocaleDateString('es-ES', { weekday: 'short' });
-    const dayMonth = date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
-    // Nuevo title: "Lun, 01/01" o "Mar, 15/12"
-    const shortTitle = `${weekdayShort.charAt(0).toUpperCase() + weekdayShort.slice(1)}, ${dayMonth}`;
+      // Formato completo para la descripción
+      const optionsFull = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const fullDateDescription = date.toLocaleDateString('es-ES', optionsFull);
 
-    // Formato completo para la descripción
-    const optionsFull = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const fullDateDescription = date.toLocaleDateString('es-ES', optionsFull);
-
-
-    dates.push({
-      id: `date_${dateId}`, // Prefijo 'date_' para identificar fácilmente
-      title: shortTitle, // Título corto para cumplir el límite de WhatsApp
-      description: `Disponibilidad para el ${fullDateDescription}` // Descripción completa
-    });
+      dates.push({
+        id: `date_${dateId}`, // Prefijo 'date_' para identificar fácilmente
+        title: shortTitle, // Título corto para cumplir el límite de WhatsApp
+        description: `Disponibilidad para el ${fullDateDescription}` // Descripción completa
+      });
+    }
+    i++;
+    daysChecked++;
   }
   return dates;
 };
@@ -131,7 +136,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
   }
 
   // 2. Buscar o crear la conversación
-  let conversation = await Conversation.findOne({ user: user._id });
+  let conversation = await Conversation.findOne({ user: user._id, state: 'active' });
   if (!conversation) {
     conversation = await Conversation.create({
       user: user._id,
@@ -170,7 +175,8 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
         `Hola 👋, ¿qué deseas hacer?`,
         [
           { id: 'agendar_cita', title: '📅 Agendar una cita' },
-          { id: 'consultar_estado', title: '🔍 Consultar estado' }
+          { id: 'consultar_estado', title: '🔍 Consultar estado' },
+          { id: 'cancelar', title: '❌ Cancelar una cita' }
         ]
       );
       conversation.currentStep = 'awaiting_choice';
@@ -193,7 +199,15 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
           `🔎 Esta funcionalidad estará disponible pronto. Gracias por tu paciencia.`
         );
         conversation.currentStep = 'start'; // Regresar al inicio después del mensaje
-      } else {
+      }else if (processedInput === 'cancelar') {
+        responsePayload = createTextMessage(
+          from,
+          `🔎 Esta funcionalidad estará disponible pronto. Gracias por tu paciencia.`
+        );
+        conversation.currentStep = 'start'; // Regresar al inicio después del mensaje
+      }
+      
+      else {
         // Si el usuario envía texto inesperado o un ID de botón no reconocido
         responsePayload = createTextMessage(
           from,
@@ -218,7 +232,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
             from,
             `✅ Tu cita ha sido registrada para el ${selectedDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. ¡Gracias!`
           );
-          conversation.currentStep = 'start'; // Regresar al inicio
+          conversation.currentStep = 'finished'; // Regresar al inicio
         } else {
           // Esto no debería ocurrir si las fechas se generan correctamente, pero es un fallback
           responsePayload = createTextMessage(
@@ -257,7 +271,11 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
       conversation.currentStep = 'start'; // Reiniciar el flujo
       break;
   }
-
+  // Si la conversación está en estado 'finished', marcarla como 'completed' para permitir reiniciar el flujo
+  if (conversation.currentStep === 'finished') {
+    conversation.state = 'completed';
+    
+  }
   // 4. Guardar mensaje del usuario y estado de la conversación
   conversation.messages.push({
     from: 'user',
