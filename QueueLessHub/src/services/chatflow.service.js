@@ -1,6 +1,6 @@
-const Conversation = require('../models/conversation.model');
-const User = require('../models/user.model');
-const Appointment = require('../models/appointment.model');
+const ConversationService = require('./conversation.service');
+const AppointmentService = require('./appointment.service');
+const UserService = require('./user.service');
 
 /**
  * Función auxiliar para generar los próximos N días hábiles (lunes a viernes).
@@ -9,7 +9,7 @@ const Appointment = require('../models/appointment.model');
  */
 const generateNextNDays = (numDays) => {
   const dates = [];
-  let i = 0;
+  let i = 1; // Comenzar en 1 para saltar el día actual
   let daysChecked = 0;
   // Asegurarse de no exceder el límite de 10 filas para los List Messages de WhatsApp
   const limit = Math.min(numDays, 10);
@@ -125,31 +125,43 @@ const createListMessage = (to, bodyText, buttonText, rows) => {
 const handleChatFlow = async ({ from, text, type, interactive }) => {
   if (!from || !text) throw new Error('Faltan datos');
 
-  // 1. Buscar o crear el usuario
-  let user = await User.findOne({ phone: from });
-  if (!user) {
-    user = await User.create({
-      phone: from,
-      name: from,
-      status: 'active'
-    });
+  let user;
+  try {
+    user = await UserService.findByPhone(from);
+    if (!user) {
+      user = await UserService.create({
+        phone: from,
+        name: from,
+        status: 'active'
+      });
+    }
+  } catch (err) {
+    return createTextMessage(
+      from,
+      '❌ Hubo un error al procesar tu usuario. Por favor, intenta más tarde.'
+    );
   }
 
-  // 2. Buscar o crear la conversación
-  let conversation = await Conversation.findOne({ user: user._id, state: 'active' });
-  if (!conversation) {
-    conversation = await Conversation.create({
-      user: user._id,
-      state: 'active',
-      currentStep: 'start',
-      messages: []
-    });
+  let conversation;
+  try {
+    conversation = await ConversationService.findOneActiveNotFinished(user._id);
+    if (!conversation) {
+      conversation = await ConversationService.create({
+        user: user._id,
+        state: 'active',
+        currentStep: 'start',
+        messages: []
+      });
+    }
+  } catch (err) {
+    return createTextMessage(
+      from,
+      '❌ Hubo un error al iniciar la conversación. Por favor, intenta más tarde.'
+    );
   }
 
-  // Si el mensaje es interactivo (botón o lista), el "texto" real que debes procesar
-  // es el ID del botón/fila, no el 'text' de la propiedad 'text.body'.
-  let processedInput = text.trim().toLowerCase(); // Por defecto, si es un mensaje de texto normal
-  let messageType = type; // Tipo de mensaje de WhatsApp (text, interactive, etc.)
+  let processedInput = text.trim().toLowerCase();
+  let messageType = type;
   let interactiveId = null;
   let interactiveTitle = null;
 
@@ -157,135 +169,189 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
     if (interactive.type === 'button_reply') {
       interactiveId = interactive.button_reply.id;
       interactiveTitle = interactive.button_reply.title;
-      processedInput = interactiveId; // Usamos el ID del botón como input para la lógica
+      processedInput = interactiveId;
     } else if (interactive.type === 'list_reply') {
       interactiveId = interactive.list_reply.id;
       interactiveTitle = interactive.list_reply.title;
-      processedInput = interactiveId; // Usamos el ID de la fila de la lista como input
+      processedInput = interactiveId;
     }
   }
 
-  let responsePayload; // La respuesta ahora será un objeto JSON
-
-  // 3. Flujo conversacional basado en el currentStep
-  switch (conversation.currentStep) {
-    case 'start':
-      responsePayload = createReplyButtonsMessage(
-        from,
-        `Hola 👋, ¿qué deseas hacer?`,
-        [
-          { id: 'agendar_cita', title: '📅 Agendar una cita' },
-          { id: 'consultar_estado', title: '🔍 Consultar estado' },
-          { id: 'cancelar', title: '❌ Cancelar una cita' }
-        ]
-      );
-      conversation.currentStep = 'awaiting_choice';
-      break;
-
-    case 'awaiting_choice':
-      if (processedInput === 'agendar_cita') {
-        // Limitar a 10 días para cumplir con la API de WhatsApp
-        const next10Days = generateNextNDays(10);
-        responsePayload = createListMessage(
+  let responsePayload;
+  try {
+    switch (conversation.currentStep) {
+      case 'start':
+        responsePayload = createReplyButtonsMessage(
           from,
-          `Perfecto. Por favor, selecciona el día para tu cita de la lista:`,
-          "Seleccionar fecha",
-          next10Days
+          `Hola 👋, ¿qué deseas hacer?`,
+          [
+            { id: 'agendar_cita', title: '📅 Agendar una cita' },
+            { id: 'consultar_estado', title: '🔍 Consultar estado' },
+            { id: 'cancelar', title: '❌ Cancelar una cita' }
+          ]
         );
-        conversation.currentStep = 'awaiting_date';
-      } else if (processedInput === 'consultar_estado') {
-        responsePayload = createTextMessage(
-          from,
-          `🔎 Esta funcionalidad estará disponible pronto. Gracias por tu paciencia.`
-        );
-        conversation.currentStep = 'start'; // Regresar al inicio después del mensaje
-      }else if (processedInput === 'cancelar') {
-        responsePayload = createTextMessage(
-          from,
-          `🔎 Esta funcionalidad estará disponible pronto. Gracias por tu paciencia.`
-        );
-        conversation.currentStep = 'start'; // Regresar al inicio después del mensaje
-      }
-      
-      else {
-        // Si el usuario envía texto inesperado o un ID de botón no reconocido
-        responsePayload = createTextMessage(
-          from,
-          `No entendí tu elección. Por favor, selecciona una de las opciones anteriores.`
-        );
-      }
-      break;
-
-    case 'awaiting_date':
-      // El processedInput ahora será el ID de la fecha (ej: 'date_2025-06-28')
-      if (processedInput.startsWith('date_')) {
-        const dateString = processedInput.split('_')[1]; // Extrae '2025-06-28'
-        const selectedDate = new Date(dateString + 'T12:00:00Z'); // Añade hora para evitar problemas de zona horaria
-
-        if (!isNaN(selectedDate.getTime())) { // Validar que la fecha sea válida
-          await Appointment.create({
-            user: user._id,
-            date: selectedDate,
-            status: 'scheduled'
-          });
-          responsePayload = createTextMessage(
+        conversation.currentStep = 'awaiting_choice';
+        break;
+      case 'awaiting_choice':
+        if (processedInput === 'agendar_cita') {
+          const next10Days = generateNextNDays(10);
+          responsePayload = createListMessage(
             from,
-            `✅ Tu cita ha sido registrada para el ${selectedDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. ¡Gracias!`
-          );
-          conversation.currentStep = 'finished'; // Regresar al inicio
-        } else {
-          // Esto no debería ocurrir si las fechas se generan correctamente, pero es un fallback
-          responsePayload = createTextMessage(
-            from,
-            `❌ Hubo un problema con la fecha seleccionada. Por favor, intenta de nuevo o envía la fecha en formato AAAA-MM-DD.`
+            `Perfecto. Por favor, selecciona el día para tu cita de la lista:`,
+            "Seleccionar fecha",
+            next10Days
           );
           conversation.currentStep = 'awaiting_date';
+        } else if (processedInput === 'consultar_estado') {
+          try {
+            const appointment = await AppointmentService.getNextConfirmedAppointment(user._id);
+            if (appointment) {
+              const now = new Date();
+              if (appointment.date < now) {
+                // La cita ya pasó, informar y cancelar
+                await AppointmentService.update(appointment._id, { confirmed: false, status: 'cancelled' });
+                responsePayload = createTextMessage(
+                  from,
+                  `Tu cita del ${appointment.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} se ha perdido por no asistencia y ha sido cancelada.`
+                );
+              } else {
+                responsePayload = createTextMessage(
+                  from,
+                  `Tu próxima cita es el ${appointment.date.toLocaleString('es-ES')}`
+                );
+              }
+            } else {
+              responsePayload = createTextMessage(
+                from,
+                'No tienes citas agendadas.'
+              );
+            }
+            conversation.currentStep = 'finished';
+          } catch (err) {
+            console.error('Error al consultar citas:', err);
+            responsePayload = createTextMessage(
+              from,
+              '❌ Hubo un error al consultar tus citas. Por favor, intenta más tarde.'
+            );
+            conversation.currentStep = 'start';
+          }
+        } else if (processedInput === 'cancelar') {
+          try {
+            const appointment = await AppointmentService.cancelConfirmedAppointment(user._id);
+            if (appointment) {
+              const fecha = appointment.date ? appointment.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
+              responsePayload = createTextMessage(
+                from,
+                `Tu cita del ${fecha} ha sido cancelada.`
+              );
+            } else {
+              responsePayload = createTextMessage(
+                from,
+                'No tienes citas activas para cancelar.'
+              );
+            }
+            conversation.currentStep = 'finished';
+          } catch (err) {
+            responsePayload = createTextMessage(
+              from,
+              '❌ Hubo un error al cancelar tu cita. Por favor, intenta más tarde.'
+            );
+            conversation.currentStep = 'start';
+          }
+        } else {
+          responsePayload = createTextMessage(
+            from,
+            `No entendí tu elección. Por favor, selecciona una de las opciones anteriores.`
+          );
         }
-      } else {
-        // Esto captura si el usuario envía texto en lugar de seleccionar de la lista
-        responsePayload = createTextMessage(
+        break;
+      case 'awaiting_date':
+        if (processedInput.startsWith('date_')) {
+          const dateString = processedInput.split('_')[1];
+          const selectedDate = new Date(dateString + 'T12:00:00Z');
+          if (!isNaN(selectedDate.getTime())) {
+            try {
+              await AppointmentService.create({
+                user: user._id,
+                date: selectedDate,
+                status: 'scheduled'
+              });
+              responsePayload = createTextMessage(
+                from,
+                `✅ Tu cita ha sido registrada para el ${selectedDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. ¡Gracias!`
+              );
+              conversation.currentStep = 'finished';
+            } catch (error) {
+              responsePayload = createTextMessage(
+                from,
+                `❌ Hubo un problema al agendar tu cita. Por favor, inténtalo de nuevo más tarde.`
+              );
+              conversation.currentStep = 'start';
+            }
+          } else {
+            responsePayload = createTextMessage(
+              from,
+              `❌ Hubo un problema con la fecha seleccionada. Por favor, intenta de nuevo o envía la fecha en formato AAAA-MM-DD.`
+            );
+            conversation.currentStep = 'awaiting_date';
+          }
+        } else {
+          responsePayload = createTextMessage(
+            from,
+            `❌ No entendí la fecha. Por favor, selecciona una opción de la lista.`
+          );
+          const next10Days = generateNextNDays(10);
+          responsePayload = createListMessage(
+            from,
+            `Por favor, selecciona el día para tu cita de la lista:`,
+            "Seleccionar fecha",
+            next10Days
+          );
+        }
+        break;
+      default:
+        responsePayload = createReplyButtonsMessage(
           from,
-          `❌ No entendí la fecha. Por favor, selecciona una opción de la lista.`
+          `Hola 👋, ¿qué deseas hacer?`,
+          [
+            { id: 'agendar_cita', title: '📅 Agendar una cita' },
+            { id: 'consultar_estado', title: '🔍 Consultar estado' },
+            { id: 'cancelar', title: '❌ Cancelar una cita' }
+          ]
         );
-        // Puedes volver a enviar la lista para que el usuario elija correctamente
-        const next10Days = generateNextNDays(10);
-        responsePayload = createListMessage(
-          from,
-          `Por favor, selecciona el día para tu cita de la lista:`,
-          "Seleccionar fecha",
-          next10Days
-        );
-      }
-      break;
-
-    default:
-      // Si la conversación está en un estado desconocido, reiniciar o mostrar el menú principal
-      responsePayload = createReplyButtonsMessage(
-        from,
-        `Hola 👋, ¿qué deseas hacer?`,
-        [
-          { id: 'agendar_cita', title: '📅 Agendar una cita' },
-          { id: 'consultar_estado', title: '🔍 Consultar estado' }
-        ]
-      );
-      conversation.currentStep = 'start'; // Reiniciar el flujo
-      break;
+        conversation.currentStep = 'start';
+        break;
+    }
+  } catch (err) {
+    responsePayload = createTextMessage(
+      from,
+      '❌ Ocurrió un error inesperado. El flujo se reiniciará. Por favor, intenta de nuevo.'
+    );
+    conversation.currentStep = 'start';
   }
-  // Si la conversación está en estado 'finished', marcarla como 'completed' para permitir reiniciar el flujo
-  if (conversation.currentStep === 'finished') {
-    conversation.state = 'completed';
-    
-  }
-  // 4. Guardar mensaje del usuario y estado de la conversación
-  conversation.messages.push({
-    from: 'user',
-    text: text, // Guardar el texto original recibido
-    timestamp: new Date()
-  });
-  conversation.updatedAt = new Date();
-  await conversation.save();
 
-  return responsePayload; // Devolver el payload para que el controlador lo envíe a WhatsApp
+  // Guardar mensaje y estado de conversación, manejar errores
+  try {
+    conversation.messages.push({
+      from: 'user',
+      text: text,
+      timestamp: new Date()
+    });
+    conversation.updatedAt = new Date();
+    await conversation.save();
+  } catch (err) {
+    responsePayload = createTextMessage(
+      from,
+      '❌ Hubo un error al guardar la conversación. El flujo se reiniciará.'
+    );
+    if (conversation) {
+      conversation.currentStep = 'start';
+      conversation.state = 'active';
+      try { await conversation.save(); } catch {}
+    }
+  }
+
+  return responsePayload;
 };
 
 module.exports = { handleChatFlow };

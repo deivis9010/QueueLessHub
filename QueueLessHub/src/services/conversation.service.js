@@ -5,5 +5,5 @@ const getAll = async () => Conversation.find();
 const getById = async (id) => Conversation.findById(id);
 const update = async (id, data) => Conversation.findByIdAndUpdate(id, data, { new: true });
 const remove = async (id) => Conversation.findByIdAndDelete(id);
-
-module.exports = { create, getAll, getById, update, remove };
+const findOneActiveNotFinished = async (userId) => Conversation.findOne({ user: userId, state: 'active', currentStep: { $ne: 'finished' } });
+module.exports = { create, getAll, getById, update, remove, findOneActiveNotFinished };

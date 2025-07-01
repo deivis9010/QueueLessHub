@@ -6,6 +6,7 @@ const appointmentSchema = new mongoose.Schema({
   date: Date,
   doctor: String,
   status: String,
+  confirmed: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

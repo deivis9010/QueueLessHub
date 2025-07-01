@@ -54,8 +54,8 @@ exports.postWebhook = async (req, res) => {
         console.log(`Tipo de mensaje no soportado: ${type}`);
         return res.sendStatus(200); // Responder 200 OK para evitar reintentos
       }
-
-      // Llama a tu función de flujo de chat
+      console.log(`Mensaje recibido de ${from}: ${text} (Tipo: ${type})`);
+      // Llama a tu función de flujo de chat (incluye cancelar y consultar_estado)
       const responsePayload = await handleChatFlow({ from, text, type, interactive });
 
       // Envía la respuesta a la API de WhatsApp
@@ -74,7 +74,7 @@ exports.postWebhook = async (req, res) => {
 
     } else {
       // Si el webhook no es un mensaje (ej: cambio de estado, lectura)
-      console.log('Webhook recibido no es un mensaje:', body);
+      //console.log('Webhook recibido no es un mensaje:', body);
       return res.status(200).send('Evento de webhook no procesado (no es un mensaje).');
     }
 
