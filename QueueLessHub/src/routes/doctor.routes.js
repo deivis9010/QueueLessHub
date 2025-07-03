@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const doctorController = require('../controller/doctor.controller');
 
-router.post('/doctor', doctorController.createDoctor);
-router.get('/doctor', doctorController.getAllDoctors);
-router.get('/doctor/:id', doctorController.getDoctorById);
-router.put('/doctor/:id', doctorController.updateDoctor);
-router.delete('/doctor/:id', doctorController.deleteDoctor);
+router.post('/', doctorController.createDoctor);
+router.get('/', doctorController.getAllDoctors);
+router.get('/:id', doctorController.getDoctorById);
+router.put('/:id', doctorController.updateDoctor);
+router.delete('/:id', doctorController.deleteDoctor);
 
 module.exports = router;
