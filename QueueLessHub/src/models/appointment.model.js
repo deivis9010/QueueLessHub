@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
-const { update } = require('../services/user.service');
+const { update } = require('../services/client.service');
 
 const appointmentSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  date: Date,
-  doctor: String,
-  status: String,
+  client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
+  availability: { type: mongoose.Schema.Types.ObjectId, ref: 'Availability', required: true }, // Referencia a la disponibilidad base (ej: lunes 9am)
+  date: { type: Date, required: true }, // Fecha específica (ej: 2025-07-01)
+  free: { type: Boolean, default: true }, // Si ese horario está libre o no
+  hour: { type: String, required: true }, // Hora específica de la cita (formato 'HH:mm')
   confirmed: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

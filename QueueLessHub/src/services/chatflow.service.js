@@ -1,6 +1,6 @@
 const ConversationService = require('./conversation.service');
 const AppointmentService = require('./appointment.service');
-const UserService = require('./user.service');
+const ClientService = require('./client.service');
 
 /**
  * Función auxiliar para generar los próximos N días hábiles (lunes a viernes).
@@ -127,9 +127,9 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
 
   let user;
   try {
-    user = await UserService.findByPhone(from);
+    user = await ClientService.findByPhone(from);
     if (!user) {
-      user = await UserService.create({
+      user = await ClientService.create({
         phone: from,
         name: from,
         status: 'active'

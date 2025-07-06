@@ -1,0 +1,45 @@
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/user.model');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const JWT_EXPIRES_IN = '7d';
+
+exports.register = async ({ username, password, role }) => {
+  // Verifica si el usuario ya existe
+  const existing = await User.findOne({ username });
+  if (existing) throw new Error('El usuario ya existe');
+
+  // Hashea la contraseña
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Crea el usuario
+  const user = await User.create({
+    username,
+    password: hashedPassword,
+    role: role || 'user',
+  });
+
+  // No retorna la contraseña
+  const { password: _, ...userData } = user.toObject();
+  return userData;
+};
+
+exports.login = async ({ username, password }) => {
+  const user = await User.findOne({ username });
+  if (!user) throw new Error('Credenciales inválidas');
+
+  const valid = await bcrypt.compare(password, user.password);
+  if (!valid) throw new Error('Credenciales inválidas');
+
+  // Genera JWT solo con id y rol
+  const token = jwt.sign(
+    { id: user._id, role: user.role },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+
+  // No retorna la contraseña
+  const { password: _, ...userData } = user.toObject();
+  return { ...userData, token };
+};

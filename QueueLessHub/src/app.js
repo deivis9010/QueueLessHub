@@ -4,10 +4,12 @@ const app = express();
 
 const botRoutes = require('./routes/bot.routes');
 const appointmentRoutes = require('./routes/appointment.routes');
-const userRoutes = require('./routes/user.routes');
+const clientRoutes = require('./routes/client.routes');
 const conversationRoutes = require('./routes/conversation.routes');
 const doctorRoutes = require('./routes/doctor.routes');
 const availabilityRoutes = require('./routes/availability.routes');
+const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
 
 app.use(cors());
 app.use(express.json());
@@ -20,10 +22,15 @@ app.use((req, res, next) => {
 
 app.use('/api/bot', botRoutes);
 app.use('/api/appointments', appointmentRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api/clients', clientRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/availability', availabilityRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.get('/api', (req, res) => {
+  res.send('Bienvenido a la API de QueueLessHub');
+});
 
 // Middleware de manejo de errores
 app.use((err, req, res, next) => {

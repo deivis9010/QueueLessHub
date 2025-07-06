@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const conversationSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
   state: String,
   currentStep: String,
   messages: [{
