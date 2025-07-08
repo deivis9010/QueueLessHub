@@ -6,6 +6,7 @@ const doctorSchema = new mongoose.Schema({
   phone: { type: String },
   email: { type: String },
   active: { type: Boolean, default: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Relación con usuario
   createdAt: { type: Date, default: Date.now }
 });
 

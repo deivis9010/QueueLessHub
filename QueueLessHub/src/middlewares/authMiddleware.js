@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
+const Doctor = require('../models/doctor.model');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
@@ -40,11 +41,17 @@ exports.roleOrSelfMiddleware = (...roles) => async (req, res, next) => {
   if (roles.includes('admin') && req.user.role === 'admin') return next();
   // Si es doctor y accede/modifica solo su propio recurso
   if (roles.includes('doctor') && req.user.role === 'doctor') {
-    // El id del usuario autenticado debe coincidir con el id del recurso
-    if (req.params.id && req.user.id === req.params.id) return next();
-    // Si el id está en el body (por ejemplo, para update)
-    if (req.body && req.body._id && req.user.id === req.body._id) return next();
-    return res.status(403).json({ error: 'Solo puedes modificar tu propia información' });
+    // Buscar el doctor asociado al usuario autenticado
+    const doctor = await Doctor.findOne({ user: req.user.id });
+    if (!doctor) return res.status(403).json({ error: 'No tienes perfil de doctor asociado' });
+    // Permitir si el id del recurso (ruta o body) coincide con el id del doctor asociado
+    if (
+      (req.params.id && req.params.id === String(doctor._id)) ||
+      (req.body && req.body.doctor && String(req.body.doctor) === String(doctor._id))
+    ) {
+      return next();
+    }
+    return res.status(403).json({ error: 'Solo puedes modificar tu propia información o recursos asociados a tu perfil' });
   }
   // Otros roles
   if (roles.includes(req.user.role)) return next();
