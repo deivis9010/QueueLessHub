@@ -1,6 +1,7 @@
 const ConversationService = require('./conversation.service');
 const AppointmentService = require('./appointment.service');
 const ClientService = require('./client.service');
+const DoctorService = require('./doctor.service');
 
 /**
  * Función auxiliar para generar los próximos N días hábiles (lunes a viernes).
@@ -194,14 +195,20 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
         break;
       case 'awaiting_choice':
         if (processedInput === 'agendar_cita') {
-          const next10Days = generateNextNDays(10);
+          // Nuevo paso: escoger doctor
+          const doctors = await DoctorService.getAll();
+          const doctorRows = doctors.map(doc => ({
+            id: `doctor_${doc._id}`,
+            title: doc.name,
+            description: doc.specialty || ''
+          }));
           responsePayload = createListMessage(
             from,
-            `Perfecto. Por favor, selecciona el día para tu cita de la lista:`,
-            "Seleccionar fecha",
-            next10Days
+            `Selecciona el doctor para tu cita:`,
+            "Escoger doctor",
+            doctorRows
           );
-          conversation.currentStep = 'awaiting_date';
+          conversation.currentStep = 'awaiting_doctor';
         } else if (processedInput === 'consultar_estado') {
           try {
             const appointment = await AppointmentService.getNextConfirmedAppointment(user._id);
@@ -265,49 +272,80 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
           );
         }
         break;
-      case 'awaiting_date':
-        if (processedInput.startsWith('date_')) {
-          const dateString = processedInput.split('_')[1];
-          const selectedDate = new Date(dateString + 'T12:00:00Z');
-          if (!isNaN(selectedDate.getTime())) {
-            try {
-              await AppointmentService.create({
-                user: user._id,
-                date: selectedDate,
-                status: 'scheduled'
-              });
-              responsePayload = createTextMessage(
-                from,
-                `✅ Tu cita ha sido registrada para el ${selectedDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}. ¡Gracias!`
-              );
-              conversation.currentStep = 'finished';
-            } catch (error) {
-              responsePayload = createTextMessage(
-                from,
-                `❌ Hubo un problema al agendar tu cita. Por favor, inténtalo de nuevo más tarde.`
-              );
-              conversation.currentStep = 'start';
-            }
-          } else {
+      case 'awaiting_doctor':
+        if (processedInput.startsWith('doctor_')) {
+          const doctorId = processedInput.split('_')[1];
+          conversation.selectedDoctor = doctorId;
+          // Buscar citas libres para el doctor
+          const freeAppointments = await AppointmentService.getAllFreeAppointmentsForDoctor(doctorId);
+          if (freeAppointments.length === 0) {
             responsePayload = createTextMessage(
               from,
-              `❌ Hubo un problema con la fecha seleccionada. Por favor, intenta de nuevo o envía la fecha en formato AAAA-MM-DD.`
+              `No hay citas disponibles para este doctor. Intenta con otro o en otro momento.`
             );
-            conversation.currentStep = 'awaiting_date';
+            conversation.currentStep = 'start';
+            delete conversation.selectedDoctor;
+            break;
           }
+          // Mostrar solo las próximas 10 citas libres
+          const rows = freeAppointments.slice(0, 10).map(app => ({
+            id: `appointment_${app._id}`,
+            title: app.date.toLocaleString('es-ES', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+            description: `Disponible el ${app.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} a las ${app.date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
+          }));
+          responsePayload = createListMessage(
+            from,
+            `Selecciona una cita disponible para el doctor:`,
+            "Escoger cita",
+            rows
+          );
+          conversation.currentStep = 'awaiting_appointment';
         } else {
           responsePayload = createTextMessage(
             from,
-            `❌ No entendí la fecha. Por favor, selecciona una opción de la lista.`
-          );
-          const next10Days = generateNextNDays(10);
-          responsePayload = createListMessage(
-            from,
-            `Por favor, selecciona el día para tu cita de la lista:`,
-            "Seleccionar fecha",
-            next10Days
+            `Por favor, selecciona un doctor de la lista.`
           );
         }
+        break;
+      case 'awaiting_appointment':
+        if (processedInput.startsWith('appointment_')) {
+          const appointmentId = processedInput.split('_')[1];
+          // Asignar la cita al usuario
+          const appointment = await AppointmentService.getById(appointmentId);
+          if (!appointment || appointment.user || appointment.status !== 'free') {
+            responsePayload = createTextMessage(
+              from,
+              `La cita seleccionada ya no está disponible. Intenta de nuevo.`
+            );
+            conversation.currentStep = 'start';
+            delete conversation.selectedDoctor;
+            break;
+          }
+          // Asignar usuario, cambiar estado y marcar free=false
+          await AppointmentService.update(appointmentId, {
+            user: user._id,
+            status: 'scheduled',
+            free: false
+          });
+          responsePayload = createTextMessage(
+            from,
+            `✅ Tu cita ha sido registrada para el ${appointment.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} a las ${appointment.date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}. ¡Gracias!`
+          );
+          conversation.currentStep = 'finished';
+          delete conversation.selectedDoctor;
+        } else {
+          responsePayload = createTextMessage(
+            from,
+            `Por favor, selecciona una cita disponible de la lista.`
+          );
+        }
+        break;
+      case 'awaiting_date':
+        responsePayload = createTextMessage(
+          from,
+          `Por favor, selecciona primero un doctor para ver las citas disponibles.`
+        );
+        conversation.currentStep = 'start';
         break;
       default:
         responsePayload = createReplyButtonsMessage(

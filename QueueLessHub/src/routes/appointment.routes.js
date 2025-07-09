@@ -10,5 +10,6 @@ router.post('/', authMiddleware, appointmentController.createAppointment);
 // Admin puede actualizar/eliminar cualquier cita, doctor solo las suyas
 router.put('/:id', authMiddleware, roleOrSelfMiddleware('admin', 'doctor'), appointmentController.updateAppointment);
 router.delete('/:id', authMiddleware, roleOrSelfMiddleware('admin', 'doctor'), appointmentController.deleteAppointment);
+router.post('/generate', authMiddleware, roleOrSelfMiddleware('admin', 'doctor'),appointmentController.generateAppointmentsFromAvailability);
 
 module.exports = router;

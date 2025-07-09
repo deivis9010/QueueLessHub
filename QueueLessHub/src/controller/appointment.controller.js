@@ -47,3 +47,13 @@ exports.deleteAppointment = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.generateAppointmentsFromAvailability = async (req, res) => {
+  try {
+    const appointments = await AppointmentService.generateAppointmentsFromAvailability(req.body.doctor, req.body.weeks);
+    res.status(201).json(appointments);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
