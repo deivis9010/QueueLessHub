@@ -11,5 +11,6 @@ router.post('/', authMiddleware, appointmentController.createAppointment);
 router.put('/:id', authMiddleware, roleOrSelfMiddleware('admin', 'doctor'), appointmentController.updateAppointment);
 router.delete('/:id', authMiddleware, roleOrSelfMiddleware('admin', 'doctor'), appointmentController.deleteAppointment);
 router.post('/generate', authMiddleware, roleOrSelfMiddleware('admin', 'doctor'),appointmentController.generateAppointmentsFromAvailability);
+router.get('/free/:doctorId', authMiddleware, appointmentController.getFreeAppointmentsForDoctor);
 
 module.exports = router;

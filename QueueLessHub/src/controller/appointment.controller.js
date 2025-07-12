@@ -57,3 +57,14 @@ exports.generateAppointmentsFromAvailability = async (req, res) => {
   }
 };
 
+exports.getFreeAppointmentsForDoctor = async (req, res) => {
+  try {
+    const doctorId = req.params.doctorId || req.body.doctorId;
+    if (!doctorId) return res.status(400).json({ error: 'doctorId requerido' });
+    const appointments = await AppointmentService.getAllFreeAppointmentsForDoctor(doctorId);
+    res.json(appointments);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+

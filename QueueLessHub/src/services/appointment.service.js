@@ -1,3 +1,11 @@
+/**
+ * Obtiene una disponibilidad por su ID.
+ * @param {String} availabilityId - ID de la disponibilidad.
+ * @returns {Promise<Object|null>} - La disponibilidad encontrada o null.
+ */
+const getAvailabilityById = async (availabilityId) => {
+  return Availability.findById(availabilityId);
+};
 const Appointment = require('../models/appointment.model');
 const Availability = require('../models/availability.model');
 
@@ -6,11 +14,11 @@ const getAll = async () => Appointment.find();
 const getById = async (id) => Appointment.findById(id);
 const update = async (id, data) => Appointment.findByIdAndUpdate(id, data, { new: true });
 const remove = async (id) => Appointment.findByIdAndDelete(id);
-const getNextConfirmedAppointment = async (userId) =>
-    Appointment.findOne({ user: userId, confirmed: true }).sort({ date: 1 });
-const cancelConfirmedAppointment = async (userId) =>
+const getNextConfirmedAppointment = async (clientId) =>
+    Appointment.findOne({ client: clientId, confirmed: true, status: 'scheduled' }).sort({ date: 1 });
+const cancelConfirmedAppointment = async (clientId) =>
     Appointment.findOneAndUpdate(
-        { user: userId, confirmed: true },
+        { client: clientId, confirmed: true, status: 'scheduled' },
         { confirmed: false, status: 'cancelled' },
         { sort: { date: 1 }, new: true }
     );
@@ -78,7 +86,7 @@ const cancelConfirmedAppointment = async (userId) =>
     };
 
 const getFreeAppointmentsForDoctorAndDate = async (doctorId, date) => {
-  // Busca citas libres para un doctor en una fecha específica (sin usuario asignado, no canceladas, no en el pasado)
+  // Busca citas libres para un doctor en una fecha específica (sin cliente asignado, no canceladas, no en el pasado)
   const start = new Date(date);
   start.setHours(0, 0, 0, 0);
   const end = new Date(date);
@@ -86,16 +94,16 @@ const getFreeAppointmentsForDoctorAndDate = async (doctorId, date) => {
   const now = new Date();
   // Cancela automáticamente las citas libres en el pasado
   await Appointment.updateMany({
-    doctor: doctorId,
+    availability: { $in: await getAvailabilityIdsForDoctor(doctorId) },
     date: { $lt: now },
-    status: { $ne: 'cancelled' },
-    user: null
-  }, { status: 'cancelled' });
+    free: true,
+    client: null
+  }, { free: false });
   // Devuelve solo las libres y futuras
   return Appointment.find({
-    doctor: doctorId,
-    user: null,
-    status: 'free',
+    availability: { $in: await getAvailabilityIdsForDoctor(doctorId) },
+    client: null,
+    free: true,
     date: { $gte: now, $gte: start, $lte: end }
   }).sort({ date: 1 });
 };
@@ -104,18 +112,42 @@ const getAllFreeAppointmentsForDoctor = async (doctorId) => {
   const now = new Date();
   // Cancela automáticamente las citas libres en el pasado
   await Appointment.updateMany({
-    doctor: doctorId,
+    availability: { $in: await getAvailabilityIdsForDoctor(doctorId) },
     date: { $lt: now },
-    status: { $ne: 'cancelled' },
-    user: null
-  }, { status: 'cancelled' });
+    free: true,
+    client: null
+  }, { free: false });
   // Devuelve solo las libres y futuras
   return Appointment.find({
-    doctor: doctorId,
-    user: null,
-    status: 'free',
+    availability: { $in: await getAvailabilityIdsForDoctor(doctorId) },
+    client: null,
+    free: true,
     date: { $gte: now }
   }).sort({ date: 1 });
+};
+
+// Helper para obtener los IDs de disponibilidad de un doctor
+const getAvailabilityIdsForDoctor = async (doctorId) => {
+  // Devuelve un array vacío si el doctor no tiene disponibilidades activas
+  const availabilities = await Availability.find({ doctor: doctorId, active: true });
+  if (!availabilities || availabilities.length === 0) return [];
+  return availabilities.map(a => a._id);
+};
+/* * Obtiene todas las citas libres de un doctor.
+ * @param {String} doctorId - ID del doctor.
+ * @returns {Promise<Array>} - Lista de citas libres.
+ */
+/**
+ * Obtiene todas las citas confirmadas y programadas de un cliente.
+ * @param {String} clientId - ID del cliente.
+ * @returns {Promise<Array>} - Lista de citas confirmadas y programadas.
+ */
+const getAllConfirmedAppointmentsForClient = async (clientId) => {
+    return Appointment.find({
+        client: clientId,
+        confirmed: true,
+        status: 'scheduled'
+    }).sort({ date: 1 });
 };
 
     module.exports = {
@@ -128,5 +160,7 @@ const getAllFreeAppointmentsForDoctor = async (doctorId) => {
         cancelConfirmedAppointment,
         generateAppointmentsFromAvailability,
         getFreeAppointmentsForDoctorAndDate,
-        getAllFreeAppointmentsForDoctor
+        getAllFreeAppointmentsForDoctor,
+        getAllConfirmedAppointmentsForClient,
+        getAvailabilityById
     };
