@@ -34,8 +34,8 @@ const generateNextNDays = (numDays) => {
 
       dates.push({
         id: `date_${dateId}`, // Prefijo 'date_' para identificar fácilmente
-        title: shortTitle, // Título corto para cumplir el límite de WhatsApp
-        description: `Disponibilidad para el ${fullDateDescription}` // Descripción completa
+        // Short title to comply with WhatsApp limit
+        description: `Availability for ${fullDateDescription}` // Full description
       });
     }
     i++;
@@ -115,7 +115,7 @@ const createListMessage = (to, bodyText, buttonText, rows) => {
       action: {
         button: buttonText,
         sections: [{
-          title: "Opciones", // Puedes personalizar el título de la sección
+          title: "Options", // Puedes personalizar el título de la sección
           rows: rows
         }]
       }
@@ -140,7 +140,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
     console.error('Error al procesar usuario:', err);
     return createTextMessage(
       from,
-      '❌ Hubo un error al procesar tu usuario. Por favor, intenta más tarde.'
+      '❌ There was an error processing your user. Please try again later.'
     );
   }
 
@@ -159,7 +159,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
   } catch (err) {
     return createTextMessage(
       from,
-      '❌ Hubo un error al iniciar la conversación. Por favor, intenta más tarde.'
+      '❌ There was an error starting the conversation. Please try again later.'
     );
   }
 
@@ -187,11 +187,11 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
       case 'start':
         responsePayload = createReplyButtonsMessage(
           from,
-          `Hola 👋, ¿qué deseas hacer?`,
+          `Hi 👋, what do you need?`,
           [
-            { id: 'schedule_app', title: '📅 Agendar una cita' },
-            { id: 'check_status', title: '🔍 Consultar estado' },
-            { id: 'cancel', title: '❌ Cancelar una cita' }
+            { id: 'schedule_app', title: '📅 Schedule' },
+            { id: 'check_status', title: '🔍 Status' },
+            { id: 'cancel', title: '❌ Cancel' }
           ]
         );
         conversation.currentStep = 'awaiting_choice';
@@ -199,30 +199,30 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
       case 'awaiting_choice':
         if (processedInput === 'schedule_app') {
           // Mensaje de introducción y lista de doctores en el mismo paso
-          const introMessage = createTextMessage(
+            const introMessage = createTextMessage(
             from,
-            `Perfecto, vamos a agendar tu cita. Primero selecciona el doctor de tu preferencia.`
-          );
+            `Perfect, let's schedule your appointment. First, select your preferred doctor.`
+            );
           const doctors = await DoctorService.getAll();
           const doctorRows = doctors.map(doc => ({
             id: `doctor_${doc._id}`,
             title: doc.name,
             description: doc.specialty || ''
           }));
-          const doctorList = createListMessage(
+            const doctorList = createListMessage(
             from,
-            `Selecciona el doctor para tu cita:`,
-            "Escoger doctor",
+            `Select the doctor for your appointment:`,
+            "Choose doctor",
             doctorRows
-          );
+            );
           // WhatsApp API solo acepta un objeto por mensaje, no un array
           // Enviar solo la lista de doctores, el mensaje introductorio se puede incluir como bodyText
-          responsePayload = createListMessage(
+            responsePayload = createListMessage(
             from,
-            `Perfecto, vamos a agendar tu cita. Selecciona el doctor de tu preferencia:`,
-            "Escoger doctor",
+            `Perfect, let's schedule your appointment. Please select your preferred doctor:`,
+            "Choose doctor",
             doctorRows
-          );
+            );
           conversation.currentStep = 'awaiting_doctor';
         } else if (processedInput === 'check_status') {
           try {
@@ -233,37 +233,37 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
               if (availability && availability.doctor) {
                 const doctor = await DoctorService.getById(availability.doctor);
                 if (doctor) {
-                  doctorInfo = ` con el Dr. ${doctor.name} (${doctor.specialty || 'Sin especialidad'})`;
+                    doctorInfo = ` with Dr. ${doctor.name} (${doctor.specialty || 'No specialty'})`;
                 }
               }
             }
             if (appointment) {
               const now = new Date();
-              if (appointment.date < now) {
-                // La cita ya pasó, informar y cancelar
+                if (appointment.date < now) {
+                // The appointment has already passed, inform and cancel
                 await AppointmentService.update(appointment._id, { confirmed: false, status: 'cancelled' });
                 responsePayload = createTextMessage(
                   from,
-                  `Tu cita${doctorInfo} del ${appointment.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} se ha perdido por no asistencia y ha sido cancelada.`
+                  `Your appointment${doctorInfo} on ${appointment.date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} was missed and has been cancelled.`
                 );
-              } else {
+                } else {
                 responsePayload = createTextMessage(
                   from,
-                  `Tu próxima cita${doctorInfo} es el ${appointment.date.toLocaleString('es-ES')}`
+                  `Your next appointment${doctorInfo} is on ${appointment.date.toLocaleString('en-US')}`
                 );
-              }
-            } else {
-              responsePayload = createTextMessage(
+                }
+              } else {
+                responsePayload = createTextMessage(
                 from,
-                'No tienes citas agendadas.'
-              );
+                'You have no scheduled appointments.'
+                );
             }
             conversation.currentStep = 'finished';
           } catch (err) {
             console.error('Error al consultar citas:', err);
             responsePayload = createTextMessage(
               from,
-              '❌ Hubo un error al consultar tus citas. Por favor, intenta más tarde.'
+              '❌ There was an error checking your appointments. Please try again later.'
             );
             conversation.currentStep = 'start';
           }
@@ -281,7 +281,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
                 if (availability && availability.doctor) {
                   const doctor = await DoctorService.getById(availability.doctor);
                   if (doctor) {
-                    doctorInfo = ` con el Dr. ${doctor.name} (${doctor.specialty || 'Sin especialidad'})`;
+                    doctorInfo = ` with Dr. ${doctor.name} (${doctor.specialty || 'No specialty'})`;
                   }
                 }
               }
@@ -292,10 +292,10 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
             // Filtrar solo las citas futuras
             const futureAppointments = allAppointments.filter(app => app.date >= now);
             if (futureAppointments.length === 0) {
-              responsePayload = createTextMessage(
+                responsePayload = createTextMessage(
                 from,
-                'No tienes citas futuras activas para cancelar.'
-              );
+                'You have no upcoming active appointments to cancel.'
+                );
               conversation.currentStep = 'finished';
             } else {
               // Mostrar lista de citas futuras para cancelar
@@ -306,37 +306,37 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
                   if (availability && availability.doctor) {
                     const doctor = await DoctorService.getById(availability.doctor);
                     if (doctor) {
-                      doctorInfo = `Dr. ${doctor.name} (${doctor.specialty || 'Sin especialidad'})`;
+                      doctorInfo = `Dr. ${doctor.name} (${doctor.specialty || 'No specialty'})`;
                     }
                   }
                 }
-                const desc = `${doctorInfo} - Agendada para el ${app.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} a las ${app.date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+                const desc = `${doctorInfo} - Scheduled for ${app.date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${app.date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
                 return {
                   id: `cancel_appointment_${app._id}`,
-                  title: app.date.toLocaleString('es-ES', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                  title: app.date.toLocaleString('en-US', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
                   description: desc.length > 72 ? desc.slice(0, 69) + '...' : desc
                 };
               }));
               responsePayload = createListMessage(
                 from,
-                'Selecciona la cita que deseas cancelar:',
-                'Cancelar cita',
+                'Select the appointment you want to cancel:',
+                'Cancel appointment',
                 rows
               );
               conversation.currentStep = 'awaiting_cancel_appointment';
             }
           } catch (err) {
-            console.error('Error al consultar citas para cancelar:', err);
+            console.error('Error checking appointments to cancel:', err);
             responsePayload = createTextMessage(
               from,
-              '❌ Hubo un error al consultar tus citas. Por favor, intenta más tarde.'
+              '❌ There was an error checking your appointments. Please try again later.'
             );
             conversation.currentStep = 'start';
           }
         } else {
           responsePayload = createTextMessage(
             from,
-            `No entendí tu elección. Por favor, selecciona una de las opciones anteriores.`
+            `I didn't understand your choice. Please select one of the previous options.`
           );
         }
         break;
@@ -350,8 +350,8 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
         }));
         responsePayload = createListMessage(
           from,
-          `Selecciona el doctor para tu cita:`,
-          "Escoger doctor",
+          `Select the doctor for your appointment:`,
+          "Choose doctor",
           doctorRows
         );
         conversation.currentStep = 'awaiting_doctor';
@@ -366,7 +366,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
             if (freeAppointments.length === 0) {
               responsePayload = createTextMessage(
                 from,
-                `No hay citas disponibles para este doctor. Intenta con otro o en otro momento.`
+                `There are no available appointments for this doctor. Try another or at a different time.`
               );
               conversation.currentStep = 'start';
               delete conversation.selectedDoctor;
@@ -374,24 +374,24 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
             }
             // Mostrar solo las próximas 10 citas libres
             const rows = freeAppointments.slice(0, 10).map(app => {
-              const desc = `Disponible el ${app.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} a las ${app.date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+              const desc = `Available on ${app.date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${app.date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
               return {
                 id: `appointment_${app._id}`,
-                title: app.date.toLocaleString('es-ES', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                title: app.date.toLocaleString('en-US', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
                 description: desc.length > 72 ? desc.slice(0, 69) + '...' : desc
               };
             });
             responsePayload = createListMessage(
               from,
-              `Selecciona una cita disponible para el doctor:`,
-              "Escoger cita",
+              `Select an available appointment for the doctor:`,
+              "Choose appointment",
               rows
             );
             conversation.currentStep = 'awaiting_appointment';
           } catch (error) {
             responsePayload = createTextMessage(
               from,
-              '❌ Ocurrió un error al buscar las citas disponibles para este doctor. Por favor, intenta de nuevo o selecciona otro doctor.'
+              '❌ An error occurred while searching for available appointments for this doctor. Please try again or select another doctor.'
             );
             conversation.currentStep = 'start';
             delete conversation.selectedDoctor;
@@ -399,7 +399,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
         } else {
           responsePayload = createTextMessage(
             from,
-            `Por favor, selecciona un doctor de la lista.`
+            `Please select a doctor from the list.`
           );
         }
         break;
@@ -412,7 +412,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
           if (!appointment || appointment.client || !appointment.free ) {
             responsePayload = createTextMessage(
               from,
-              `La cita seleccionada ya no está disponible. Intenta de nuevo.`
+              `The selected appointment is no longer available. Please try again.`
             );
             conversation.currentStep = 'start';
             delete conversation.selectedDoctor;
@@ -425,7 +425,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
             if (availability && availability.doctor) {
               const doctor = await DoctorService.getById(availability.doctor);
               if (doctor) {
-                doctorInfo = ` con el Dr. ${doctor.name} (${doctor.specialty || 'Sin especialidad'})`;
+                doctorInfo = ` with Dr. ${doctor.name} (${doctor.specialty || 'No specialty'})`;
               }
             }
           }
@@ -439,14 +439,14 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
           });
           responsePayload = createTextMessage(
             from,
-            `✅ Tu cita${doctorInfo} ha sido registrada para el ${appointment.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} a las ${appointment.date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}. ¡Gracias!`
+            `✅ Your appointment${doctorInfo} has been scheduled for ${appointment.date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${appointment.date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}. Thank you!`
           );
           conversation.currentStep = 'finished';
           delete conversation.selectedDoctor;
         } else {
           responsePayload = createTextMessage(
             from,
-            `Por favor, selecciona una cita disponible de la lista.`
+            `Please select an available appointment from the list.`
           );
         }
         break;
@@ -463,7 +463,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
               if (availability && availability.doctor) {
                 const doctor = await DoctorService.getById(availability.doctor);
                 if (doctor) {
-                  doctorInfo = ` con el Dr. ${doctor.name} (${doctor.specialty || 'Sin especialidad'})`;
+                    doctorInfo = ` with Dr. ${doctor.name} (${doctor.specialty || 'No specialty'})`;
                 }
               }
             }
@@ -475,7 +475,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
             ) {
               responsePayload = createTextMessage(
                 from,
-                'La cita seleccionada no es válida para cancelar.'
+                'The selected appointment is not valid for cancellation.'
               );
               conversation.currentStep = 'start';
               break;
@@ -483,40 +483,40 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
             await AppointmentService.update(appointmentId, { status: 'cancelled', confirmed: false });
             const fecha = appointment.date ? appointment.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
             responsePayload = createTextMessage(
-              from,
-              `Tu cita${doctorInfo} del ${fecha} ha sido cancelada.`
-            );
+            from,
+            `Your appointment${doctorInfo} on ${fecha} has been cancelled.`
+          );
             conversation.currentStep = 'finished';
           } catch (err) {
             console.error('Error al cancelar cita:', err);
             responsePayload = createTextMessage(
-              from,
-              '❌ Hubo un error al cancelar la cita seleccionada. Por favor, intenta más tarde.'
-            );
+            from,
+            '❌ There was an error cancelling the selected appointment. Please try again later.'
+          );
             conversation.currentStep = 'start';
           }
         } else {
           responsePayload = createTextMessage(
             from,
-            'Por favor, selecciona una cita válida para cancelar de la lista.'
+            'Please select a valid appointment to cancel from the list.'
           );
         }
         break;
       case 'awaiting_date':
         responsePayload = createTextMessage(
           from,
-          `Por favor, selecciona primero un doctor para ver las citas disponibles.`
+          `Please select a doctor first to see available appointments.`
         );
         conversation.currentStep = 'start';
         break;
       default:
         responsePayload = createReplyButtonsMessage(
           from,
-          `Hola 👋, ¿qué deseas hacer?`,
+          `Hi 👋, what do you need?`,
           [
-            { id: 'schedule_app', title: '📅 Agendar una cita' },
-            { id: 'check_status', title: '🔍 Consultar estado' },
-            { id: 'cancel', title: '❌ Cancelar una cita' }
+            { id: 'schedule_app', title: '📅 Schedule' },
+            { id: 'check_status', title: '🔍 Status' },
+            { id: 'cancel', title: '❌ Cancel' }
           ]
         );
         conversation.currentStep = 'start';
@@ -525,7 +525,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
   } catch (err) {
     responsePayload = createTextMessage(
       from,
-      '❌ Ocurrió un error inesperado. El flujo se reiniciará. Por favor, intenta de nuevo.'
+      '❌ An unexpected error occurred. The flow will restart. Please try again.'
     );
     conversation.currentStep = 'start';
   }
@@ -542,7 +542,7 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
   } catch (err) {
     responsePayload = createTextMessage(
       from,
-      '❌ Hubo un error al guardar la conversación. El flujo se reiniciará.'
+      '❌ There was an error saving the conversation. The flow will restart.'
     );
     if (conversation) {
       conversation.currentStep = 'start';
