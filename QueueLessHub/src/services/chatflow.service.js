@@ -147,8 +147,20 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
   let conversation;
   try {
     conversation = await ConversationService.findOneActiveNotFinished(client._id);
+    const now = new Date();
+    if (conversation) {
+      // Si han pasado más de 10 minutos desde el último mensaje, cancelar y crear nueva conversación
+      const lastUpdate = conversation.updatedAt || conversation.createdAt;
+      const diffMs = now - new Date(lastUpdate);
+      if (diffMs > 10 * 60 * 1000) { // 10 minutos en ms
+        conversation.state = 'finished';
+        conversation.currentStep = 'start';
+        await conversation.save();
+        conversation = null;
+      }
+    }
     if (!conversation) {
-      console.log('No se encontró conversación activa, creando una nueva');
+      console.log('No se encontró conversación activa o estaba expirada, creando una nueva');
       conversation = await ConversationService.create({
         client: client._id,
         state: 'active',
@@ -183,6 +195,12 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
   let responsePayload;
   try {
     console.log('conversation.currentStep:', conversation.currentStep);
+
+    // Permitir comandos principales en cualquier paso
+    if (["schedule_app", "check_status", "cancel"].includes(processedInput)) {
+      conversation.currentStep = "awaiting_choice";
+    }
+
     switch (conversation.currentStep) {
       case 'start':
         responsePayload = createReplyButtonsMessage(
