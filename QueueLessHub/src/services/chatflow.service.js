@@ -3,46 +3,7 @@ const AppointmentService = require('./appointment.service');
 const ClientService = require('./client.service');
 const DoctorService = require('./doctor.service');
 
-/**
- * Función auxiliar para generar los próximos N días hábiles (lunes a viernes).
- * @param {number} numDays - Número de días hábiles a generar.
- * @returns {Array<Object>} Un array de objetos con id, title, y description para List Messages.
- */
-const generateNextNDays = (numDays) => {
-  const dates = [];
-  let i = 1; // Comenzar en 1 para saltar el día actual
-  let daysChecked = 0;
-  // Asegurarse de no exceder el límite de 10 filas para los List Messages de WhatsApp
-  const limit = Math.min(numDays, 10);
-  while (dates.length < limit && daysChecked < 31) { // Máximo 31 días para evitar bucles infinitos
-    const date = new Date();
-    date.setDate(date.getDate() + i); // Añade 'i' días a la fecha actual
-    const dayOfWeek = date.getDay(); // 0: domingo, 1: lunes, ..., 5: viernes, 6: sábado
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Solo lunes a viernes
-      // Formato 'YYYY-MM-DD' para el ID
-      const dateId = date.toISOString().split('T')[0];
 
-      // Formato legible para el título (más corto para cumplir con el límite de 24 caracteres)
-      const weekdayShort = date.toLocaleDateString('es-ES', { weekday: 'short' });
-      const dayMonth = date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
-      // Nuevo title: "Lun, 01/01" o "Mar, 15/12"
-      const shortTitle = `${weekdayShort.charAt(0).toUpperCase() + weekdayShort.slice(1)}, ${dayMonth}`;
-
-      // Formato completo para la descripción
-      const optionsFull = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      const fullDateDescription = date.toLocaleDateString('es-ES', optionsFull);
-
-      dates.push({
-        id: `date_${dateId}`, // Prefijo 'date_' para identificar fácilmente
-        // Short title to comply with WhatsApp limit
-        description: `Availability for ${fullDateDescription}` // Full description
-      });
-    }
-    i++;
-    daysChecked++;
-  }
-  return dates;
-};
 
 /**
  * Crea un payload de mensaje de texto simple para WhatsApp.

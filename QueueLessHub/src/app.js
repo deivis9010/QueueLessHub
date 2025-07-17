@@ -3,6 +3,7 @@ const cors = require('cors');
 const app = express();
 
 const botRoutes = require('./routes/bot.routes');
+const botSpreadsheetRoutes = require('./routes/bot.spreadsheet.routes');
 const appointmentRoutes = require('./routes/appointment.routes');
 const clientRoutes = require('./routes/client.routes');
 const conversationRoutes = require('./routes/conversation.routes');
@@ -20,6 +21,7 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/api/bot/spreadsheet', botSpreadsheetRoutes);
 app.use('/api/bot', botRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/clients', clientRoutes);

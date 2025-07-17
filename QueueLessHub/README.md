@@ -1,5 +1,14 @@
 
 # QueueLessHub
+# Flujo de trabajo dual: MongoDB vs Google Sheets
+
+Este proyecto ahora incluye dos flujos principales:
+
+1. **Flujo automatizado con MongoDB**: El backend gestiona citas, usuarios, doctores y disponibilidad de forma automática, almacenando toda la información en MongoDB Atlas. El sistema permite la gestión completa de citas y recursos médicos, con lógica de negocio, validaciones y automatización.
+
+2. **Flujo de recopilación de datos para coordinación manual (Google Sheets)**: El bot de WhatsApp recopila únicamente los datos básicos del usuario (nombre, aseguradora, número de asegurado, fecha preferida) y los guarda en una hoja de cálculo de Google Sheets. El personal del negocio accede a esta hoja para coordinar y confirmar las citas manualmente. Este flujo no automatiza la asignación ni la gestión de citas, solo facilita la recolección y organización de la información de los clientes.
+
+Ambos flujos conviven en el mismo backend y pueden usarse según las necesidades del negocio: automatización total o coordinación manual.
 
 Backend Node.js + Express + MongoDB Atlas
 
@@ -86,6 +95,13 @@ Para recibir webhooks de WhatsApp en desarrollo, necesitas exponer tu servidor l
 - Soporte para roles: admin, doctor, user.
 - Los doctores solo pueden gestionar sus propios recursos.
 - Los clientes son entidades de negocio y no requieren autenticación.
+
+### Nuevo flujo de WhatsApp + Google Sheets
+- Conversación paso a paso para recopilar datos del usuario.
+- Validación de cada campo (nombre, aseguradora, número de póliza, fecha).
+- Los datos se envían a una hoja de cálculo de Google Sheets.
+- El personal del negocio revisa la hoja y coordina las citas manualmente.
+- No se almacena la cita en MongoDB ni se automatiza la asignación.
 ## Recomendaciones
 - Usa HTTPS en producción.
 - Mantén tu archivo `.env` fuera del control de versiones.
@@ -118,6 +134,11 @@ Para recibir webhooks de WhatsApp en desarrollo, necesitas exponer tu servidor l
 - `src/middlewares/` — Middlewares de autenticación, autorización, logs y errores
 - `src/app.js` — Lógica de la aplicación
 - `src/server.js` — Arranque y conexión a MongoDB
+
+#### Archivos relevantes para el flujo Google Sheets
+- `src/services/chatflow.spreadsheet.service.js` — Lógica conversacional y envío de datos a Google Sheets
+- `src/controller/bot.spreadsheet.controller.js` — Webhook para WhatsApp y manejo del flujo de Google Sheets
+- `.env` — Configuración de credenciales y parámetros de la hoja de cálculo
 
 ## Notas
 - Usa nodemon para desarrollo.

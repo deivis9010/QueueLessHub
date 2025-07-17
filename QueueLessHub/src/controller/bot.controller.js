@@ -1,7 +1,5 @@
 // Controlador del bot para manejar la lógica de conversación y webhook
-const User = require('../models/user.model');
-const Appointment = require('../models/appointment.model');
-const Conversation = require('../models/conversation.model');
+
 const { handleChatFlow } = require('../services/chatflow.service');
 
 
