@@ -78,10 +78,22 @@ const SHEET_NAME = process.env.SHEET_NAME || 'Sheet1'; // Reemplaza por el nombr
 
 async function sendToSpreadsheet(data) {
   try {
-    const auth = new google.auth.GoogleAuth({
-      keyFile: CREDENTIALS_PATH,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
+    let auth;
+    
+    // En producción (Vercel), usar credenciales desde variable de entorno
+    if (process.env.GOOGLE_CREDENTIALS_JSON) {
+      const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+      auth = new google.auth.GoogleAuth({
+        credentials: credentials,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      });
+    } else {
+      // En desarrollo local, usar archivo de credenciales
+      auth = new google.auth.GoogleAuth({
+        keyFile: CREDENTIALS_PATH,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      });
+    }
     const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
 
     const values = [
