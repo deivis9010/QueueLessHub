@@ -6,8 +6,17 @@ const doctorSchema = new mongoose.Schema({
   phone: { type: String },
   email: { type: String },
   active: { type: Boolean, default: true },
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Relación con usuario
-  createdAt: { type: Date, default: Date.now }
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true } // Relación con usuario
+}, {
+  timestamps: true,
+  toJSON: {
+    virtuals: true,
+    versionKey: false,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+    }
+  }
 });
 
 module.exports = mongoose.model('Doctor', doctorSchema);

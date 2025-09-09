@@ -8,8 +8,17 @@ const conversationSchema = new mongoose.Schema({
     from: { type: String },
     text: { type: String },
     timestamp: { type: Date, default: Date.now }
-  }],
-  updatedAt: { type: Date, default: Date.now }
+  }]
+}, {
+  timestamps: true,
+  toJSON: {
+    virtuals: true,
+    versionKey: false,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+    }
+  }
 });
 
 module.exports = mongoose.model('Conversation', conversationSchema);

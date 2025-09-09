@@ -13,11 +13,19 @@ const availabilitySchema = new mongoose.Schema({
     required: true, 
     enum: [15, 30, 45, 60], // duración permitida en minutos
   }, 
-  createdAt: { type: Date, default: Date.now }, // fecha de creación
-  updatedAt: { type: Date, default: Date.now }, // fecha de actualización
   // Si la disponibilidad está activa o no
   // Esto permite desactivar una disponibilidad sin eliminarla
   active: { type: Boolean, default: true }
+}, {
+  timestamps: true,
+  toJSON: {
+    virtuals: true,
+    versionKey: false,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+    }
+  }
 });
 
 module.exports = mongoose.model('Availability', availabilitySchema);

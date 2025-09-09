@@ -35,6 +35,11 @@ app.get('/api', (req, res) => {
 });
 
 // Middleware de manejo de errores
+// DB / Mongoose error handler (returns 400/409 for common DB errors)
+const dbErrorHandler = require('./middlewares/dbErrorHandler');
+app.use(dbErrorHandler);
+
+// Fallback generic error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Error interno del servidor' });

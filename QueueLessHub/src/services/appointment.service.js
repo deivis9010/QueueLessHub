@@ -9,19 +9,32 @@ const getAvailabilityById = async (availabilityId) => {
 const Appointment = require('../models/appointment.model');
 const Availability = require('../models/availability.model');
 
-const create = async (data) => Appointment.create(data);
-const getAll = async () => Appointment.find();
-const getById = async (id) => Appointment.findById(id);
-const update = async (id, data) => Appointment.findByIdAndUpdate(id, data, { new: true });
+// Create an appointment and return it populated with client and availability (including doctor)
+const create = async (data) => {
+  const doc = await Appointment.create(data);
+  return Appointment.findById(doc._id).populate('client').populate({ path: 'availability', populate: { path: 'doctor' } });
+};
+
+// Return all appointments populated with client and availability -> doctor
+const getAll = async () => Appointment.find().populate('client').populate({ path: 'availability', populate: { path: 'doctor' } });
+
+// Get single appointment populated
+const getById = async (id) => Appointment.findById(id).populate('client').populate({ path: 'availability', populate: { path: 'doctor' } });
+
+// Update and return populated
+const update = async (id, data) => Appointment.findByIdAndUpdate(id, data, { new: true }).populate('client').populate({ path: 'availability', populate: { path: 'doctor' } });
+
 const remove = async (id) => Appointment.findByIdAndDelete(id);
+
 const getNextConfirmedAppointment = async (clientId) =>
-    Appointment.findOne({ client: clientId, confirmed: true, status: 'scheduled' }).sort({ date: 1 });
+  Appointment.findOne({ client: clientId, confirmed: true, status: 'scheduled' }).sort({ date: 1 }).populate('client').populate({ path: 'availability', populate: { path: 'doctor' } });
+
 const cancelConfirmedAppointment = async (clientId) =>
-    Appointment.findOneAndUpdate(
-        { client: clientId, confirmed: true, status: 'scheduled' },
-        { confirmed: false, status: 'cancelled' },
-        { sort: { date: 1 }, new: true }
-    );
+  Appointment.findOneAndUpdate(
+    { client: clientId, confirmed: true, status: 'scheduled' },
+    { confirmed: false, status: 'cancelled' },
+    { sort: { date: 1 }, new: true }
+  ).populate('client').populate({ path: 'availability', populate: { path: 'doctor' } });
 
     /**
      * Genera citas para un doctor basado en sus disponibilidades activas.

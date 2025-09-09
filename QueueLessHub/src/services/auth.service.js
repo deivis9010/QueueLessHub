@@ -27,6 +27,7 @@ exports.register = async ({ username, password, role }) => {
 
 exports.login = async ({ username, password }) => {
   const user = await User.findOne({ username });
+  
   if (!user) throw new Error('Credenciales inválidas');
 
   const valid = await bcrypt.compare(password, user.password);
@@ -40,6 +41,6 @@ exports.login = async ({ username, password }) => {
   );
 
   // No retorna la contraseña
-  const { password: _, ...userData } = user.toObject();
+  const { password: _, ...userData } = user.toJSON();
   return { ...userData, token };
 };

@@ -8,9 +8,17 @@ const appointmentSchema = new mongoose.Schema({
   free: { type: Boolean, default: true }, // Si ese horario está libre o no
   hour: { type: String, required: true }, // Hora específica de la cita (formato 'HH:mm')
   confirmed: { type: Boolean, default: true },
-  status: { type: String, default: 'available' }, // Estado de la cita (ej: 'available', 'scheduled', 'cancelled')
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  status: { type: String, default: 'available' } // Estado de la cita (ej: 'available', 'scheduled', 'cancelled')
+}, {
+  timestamps: true,
+  toJSON: {
+    virtuals: true,
+    versionKey: false,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+    }
+  }
 });
 
 module.exports = mongoose.model('Appointment', appointmentSchema);
