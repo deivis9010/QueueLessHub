@@ -28,10 +28,10 @@ exports.register = async ({ username, password, role }) => {
 exports.login = async ({ username, password }) => {
   const user = await User.findOne({ username });
   
-  if (!user) throw new Error('Credenciales inválidas');
+  if (!user) throw new Error('No autorizado');
 
   const valid = await bcrypt.compare(password, user.password);
-  if (!valid) throw new Error('Credenciales inválidas');
+  if (!valid) throw new Error('No autorizado');
 
   // Genera JWT solo con id y rol
   const token = jwt.sign(
