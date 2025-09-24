@@ -2,8 +2,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
-const JWT_EXPIRES_IN = '7d';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 
 exports.register = async ({ username, password, role }) => {
   // Verifica si el usuario ya existe

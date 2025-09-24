@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const app = express();
 
 const botRoutes = require('./routes/bot.routes');
@@ -11,6 +12,12 @@ const doctorRoutes = require('./routes/doctor.routes');
 const availabilityRoutes = require('./routes/availability.routes');
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
+
+// Configuración de seguridad con Helmet
+app.use(helmet({
+  contentSecurityPolicy: false, // API REST no sirve HTML
+  crossOriginEmbedderPolicy: false // Permitir webhooks de WhatsApp
+}));
 
 app.use(cors());
 app.use(express.json());
