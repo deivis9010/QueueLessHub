@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 const Doctor = require('../models/doctor.model');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 
 // Middleware de autenticación
 exports.authMiddleware = async (req, res, next) => {
@@ -32,13 +32,20 @@ exports.roleMiddleware = (...roles) => (req, res, next) => {
   next();
 };
 
-// Middleware de autorización por rol y propiedad (para doctores)
+// Middleware de autorización por rol y propiedad (para doctores y usuarios)
 exports.roleOrSelfMiddleware = (...roles) => async (req, res, next) => {
   if (!req.user) {
     return res.status(403).json({ error: 'Acceso denegado' });
   }
+  
   // Si es admin, acceso total
   if (roles.includes('admin') && req.user.role === 'admin') return next();
+  
+  // Si es usuario y accede/modifica solo su propio perfil
+  if (req.user.role === 'user' && req.params.id && req.params.id === String(req.user.id)) {
+    return next();
+  }
+  
   // Si es doctor y accede/modifica solo su propio recurso
   if (roles.includes('doctor') && req.user.role === 'doctor') {
     // Buscar el doctor asociado al usuario autenticado
@@ -53,6 +60,7 @@ exports.roleOrSelfMiddleware = (...roles) => async (req, res, next) => {
     }
     return res.status(403).json({ error: 'Solo puedes modificar tu propia información o recursos asociados a tu perfil' });
   }
+  
   // Otros roles
   if (roles.includes(req.user.role)) return next();
   return res.status(403).json({ error: 'Acceso denegado' });

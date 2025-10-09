@@ -7,6 +7,7 @@ const appointmentSchema = new mongoose.Schema({
   date: { type: Date, required: true }, // Fecha específica (ej: 2025-07-01)
   free: { type: Boolean, default: true }, // Si ese horario está libre o no
   hour: { type: String, required: true }, // Hora específica de la cita (formato 'HH:mm')
+  notes: { type: String }, // Notas adicionales sobre la cita
   confirmed: { type: Boolean, default: true },
   status: { type: String, default: 'available' } // Estado de la cita (ej: 'available', 'scheduled', 'cancelled')
 }, {

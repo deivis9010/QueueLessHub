@@ -6,7 +6,7 @@ exports.register = async (req, res) => {
     // Si el rol es doctor, crea usuario y doctor asociado solo si el registro fue exitoso
     if (req.body.role === 'doctor') {
       const user = await AuthService.register(req.body);
-      if (!user || !user._id) {
+      if (!user || !user.id) {
         return res.status(400).json({ error: 'No se pudo registrar el usuario doctor.' });
       }
       const doctor = await Doctor.create({
@@ -14,7 +14,7 @@ exports.register = async (req, res) => {
         specialty: req.body.specialty,
         phone: req.body.phone,
         email: req.body.email,
-        user: user._id
+        user: user.id
       });
       return res.status(201).json({ user, doctor });
     }
@@ -31,6 +31,15 @@ exports.login = async (req, res) => {
     const result = await AuthService.login(req.body);
     res.json(result);
   } catch (err) {
+    // Si el error es de autenticación, usar 401
+    if (err.message === 'No autorizado') {
+      return res.status(401).json({ error: err.message });
+    }
+    // Si es error de campos requeridos, usar 400
+    if (err.message.includes('son requeridos')) {
+      return res.status(400).json({ error: err.message });
+    }
+    // Otros errores (validación, etc.) usar 400
     res.status(400).json({ error: err.message });
   }
 };

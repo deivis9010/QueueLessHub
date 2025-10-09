@@ -21,11 +21,16 @@ exports.register = async ({ username, password, role }) => {
   });
 
   // No retorna la contraseña
-  const { password: _, ...userData } = user.toObject();
+  const { password: _, ...userData } = user.toJSON();
   return userData;
 };
 
 exports.login = async ({ username, password }) => {
+  // Validar campos requeridos
+  if (!username || !password) {
+    throw new Error('Username y password son requeridos');
+  }
+
   const user = await User.findOne({ username });
   
   if (!user) throw new Error('No autorizado');
