@@ -1,0 +1,23 @@
+{
+  "folders": [
+    {
+      "name": "QueueLessHub",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "jest.jestCommandLine": "npm test --",
+    "jest.runMode": {
+      "type": "watch"
+    },
+    "jest.autoEnable": true
+  },
+  "extensions": {
+    "recommendations": [
+      "orta.vscode-jest",
+      "ms-vscode.vscode-json",
+      "bradlc.vscode-tailwindcss",
+      "esbenp.prettier-vscode"
+    ]
+  }
+}

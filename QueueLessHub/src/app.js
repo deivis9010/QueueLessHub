@@ -40,6 +40,9 @@ app.use('/api/users', userRoutes);
 app.get('/api', (req, res) => {
   res.send('Bienvenido a la API de QueueLessHub');
 });
+app.get('/', (req, res) => {
+  res.send('Bienvenido a la API de QueueLessHub');
+});
 
 // Middleware de manejo de errores
 // DB / Mongoose error handler (returns 400/409 for common DB errors)
