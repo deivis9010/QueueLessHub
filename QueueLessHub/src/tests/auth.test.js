@@ -16,9 +16,9 @@ describe('Auth Endpoints', () => {
         .send(userData)
         .expect(201);
 
-      expect(response.body).toHaveProperty('id');
-      expect(response.body.username).toBe(userData.username);
-      expect(response.body.role).toBe(userData.role);
+      expect(response.body.user).toHaveProperty('id');
+      expect(response.body.user.username).toBe(userData.username);
+      expect(response.body.user.role).toBe(userData.role);
       expect(response.body).not.toHaveProperty('password');
     });
 

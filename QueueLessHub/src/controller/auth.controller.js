@@ -1,26 +1,29 @@
 const AuthService = require('../services/auth.service');
-const Doctor = require('../models/doctor.model');
+
+const DoctorService = require('../services/doctor.service');
 
 exports.register = async (req, res) => {
   try {
-    // Si el rol es doctor, crea usuario y doctor asociado solo si el registro fue exitoso
+    const user = await AuthService.register(req.body);
+    if (!user || !user.id) {
+      return res.status(400).json({ error: 'No se pudo registrar el usuario.' });
+    }
+
+    let doctor = null;
     if (req.body.role === 'doctor') {
-      const user = await AuthService.register(req.body);
-      if (!user || !user.id) {
-        return res.status(400).json({ error: 'No se pudo registrar el usuario doctor.' });
-      }
-      const doctor = await Doctor.create({
+      doctor = await DoctorService.create({
         name: req.body.name,
         specialty: req.body.specialty,
         phone: req.body.phone,
         email: req.body.email,
         user: user.id
       });
-      return res.status(201).json({ user, doctor });
+      if (!doctor || !doctor.id) {
+        return res.status(400).json({ error: 'No se pudo crear el registro de doctor.' });
+      }
     }
-    // Registro normal de usuario
-    const user = await AuthService.register(req.body);
-    res.status(201).json(user);
+
+    res.status(201).json({ user, doctor });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

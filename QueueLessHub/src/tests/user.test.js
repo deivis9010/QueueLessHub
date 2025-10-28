@@ -35,7 +35,7 @@ describe('User Endpoints', () => {
         role: 'user'
       });
 
-    userId = userResponse.body.id;
+    userId = userResponse.body.user.id;
 
     const userLoginResponse = await request(app)
       .post('/api/auth/login')

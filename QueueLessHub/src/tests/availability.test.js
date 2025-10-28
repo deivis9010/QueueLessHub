@@ -19,7 +19,7 @@ describe('Availability Endpoints', () => {
         role: 'admin'
       });
 
-    userId = userResponse.body.id;
+    userId = userResponse.body.user.id;
 
     const loginResponse = await request(app)
       .post('/api/auth/login')
