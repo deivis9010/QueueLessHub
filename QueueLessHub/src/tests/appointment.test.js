@@ -32,7 +32,8 @@ describe('Appointment Endpoints', () => {
       .send({
         username: 'testuser',
         password: 'password123',
-        role: 'admin'
+        role: 'admin',
+        email: 'testuser@example.com'
       });
 
     userId = userResponse.body.user.id;
@@ -59,7 +60,6 @@ describe('Appointment Endpoints', () => {
       name: 'Dr. Test',
       speciality: 'Test Speciality',
       phone: '+9876543210',
-      email: 'doctor@example.com',
       user: userId
     });
     doctorId = doctor._id.toString();

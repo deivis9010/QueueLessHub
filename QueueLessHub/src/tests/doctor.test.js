@@ -6,15 +6,18 @@ const User = require('../models/user.model');
 describe('Doctor Endpoints', () => {
   let authToken;
   let userId;
+  let userEmail;
 
   beforeEach(async () => {
     // Create and login a user to get auth token
+    userEmail = 'testdoctor@example.com';
     const userResponse = await request(app)
       .post('/api/auth/register')
       .send({
         username: 'testdoctor',
         password: 'password123',
-        role: 'admin'
+        role: 'admin',
+        email: userEmail
       });
 
     userId = userResponse.body.user.id;
@@ -35,10 +38,8 @@ describe('Doctor Endpoints', () => {
         name: 'Dr. Juan Pérez',
         specialty: 'Cardiología', // Corregido: specialty no speciality
         phone: '+1234567890',
-        email: 'doctor@example.com',
         user: userId
       };
-
       const response = await request(app)
         .post('/api/doctors')
         .set('Authorization', `Bearer ${authToken}`)
@@ -49,8 +50,9 @@ describe('Doctor Endpoints', () => {
       expect(response.body.name).toBe(doctorData.name);
       expect(response.body.specialty).toBe(doctorData.specialty); // Corregido: specialty
       expect(response.body.phone).toBe(doctorData.phone);
-      expect(response.body.email).toBe(doctorData.email);
-      expect(response.body.user).toBe(userId); // Solo el ID, no objeto populated
+  // Email now lives in the associated user
+  expect(response.body.user).toHaveProperty('email', userEmail);
+  expect(response.body.user.id).toBe(userId); // user is populated object
     });
 
     it('should fail with missing required fields', async () => {
@@ -73,7 +75,6 @@ describe('Doctor Endpoints', () => {
           name: 'Dr. Juan Pérez',
           specialty: 'Cardiología', // Corregido: specialty
           phone: '+1234567890',
-          email: 'doctor@example.com',
           user: userId
         })
         .expect(401);
@@ -86,13 +87,15 @@ describe('Doctor Endpoints', () => {
       const user2 = await User.create({
         username: 'doctor2',
         password: 'hashedpassword',
-        role: 'doctor'
+        role: 'doctor',
+        email: 'doctor2@example.com'
       });
 
       const user3 = await User.create({
         username: 'doctor3',
         password: 'hashedpassword',
-        role: 'doctor'
+        role: 'doctor',
+        email: 'doctor3@example.com'
       });
 
       // Create test doctors
@@ -101,21 +104,18 @@ describe('Doctor Endpoints', () => {
           name: 'Dr. María García',
           specialty: 'Pediatría', // Corregido: specialty
           phone: '+1111111111',
-          email: 'maria@example.com',
           user: userId
         },
         {
           name: 'Dr. Carlos López',
           specialty: 'Neurología', // Corregido: specialty
           phone: '+2222222222',
-          email: 'carlos@example.com',
           user: user2._id
         },
         {
           name: 'Dr. Ana Martínez',
           specialty: 'Dermatología', // Corregido: specialty
           phone: '+3333333333',
-          email: 'ana@example.com',
           user: user3._id
         }
       ]);
@@ -133,7 +133,8 @@ describe('Doctor Endpoints', () => {
       expect(response.body[0]).toHaveProperty('name');
       expect(response.body[0]).toHaveProperty('specialty'); // Corregido: specialty
       expect(response.body[0]).toHaveProperty('user');
-      expect(response.body[0].user).toHaveProperty('username');
+  expect(response.body[0].user).toHaveProperty('username');
+  expect(response.body[0].user).toHaveProperty('email');
     });
 
     it('should fail without authentication', async () => {
@@ -151,7 +152,6 @@ describe('Doctor Endpoints', () => {
         name: 'Dr. Test',
         specialty: 'Test Speciality', // Corregido: specialty
         phone: '+1234567890',
-        email: 'test@example.com',
         user: userId
       });
       doctorId = doctor._id.toString();
@@ -165,7 +165,7 @@ describe('Doctor Endpoints', () => {
 
       expect(response.body).toHaveProperty('id', doctorId);
       expect(response.body.name).toBe('Dr. Test');
-      expect(response.body.specialty).toBe('Test Speciality'); // Corregido: specialty
+  expect(response.body.specialty).toBe('Test Speciality'); // Corregido: specialty
       expect(response.body.user).toHaveProperty('username', 'testdoctor');
     });
 
@@ -193,7 +193,6 @@ describe('Doctor Endpoints', () => {
         name: 'Dr. Test',
         specialty: 'Test Speciality', // Corregido: specialty
         phone: '+1234567890',
-        email: 'test@example.com',
         user: userId
       });
       doctorId = doctor._id.toString();
@@ -215,7 +214,8 @@ describe('Doctor Endpoints', () => {
       expect(response.body.name).toBe(updateData.name);
       expect(response.body.specialty).toBe(updateData.specialty); // Corregido: specialty
       expect(response.body.phone).toBe(updateData.phone);
-      expect(response.body.email).toBe('test@example.com'); // Should remain unchanged
+  // Email lives on the associated user
+  expect(response.body.user).toHaveProperty('email', userEmail);
     });
 
     it('should return 404 for non-existent doctor', async () => {

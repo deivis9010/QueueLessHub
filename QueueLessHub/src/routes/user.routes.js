@@ -14,4 +14,6 @@ router.put('/:id', authMiddleware, roleOrSelfMiddleware('admin'), userController
 // Solo admin puede eliminar usuarios
 router.delete('/:id', authMiddleware, roleMiddleware('admin'), userController.deleteUser);
 
+router.post('/:id/password', authMiddleware, userController.changePassword);
+
 module.exports = router;

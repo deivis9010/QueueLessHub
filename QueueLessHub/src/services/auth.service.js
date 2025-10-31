@@ -5,7 +5,7 @@ const User = require('../models/user.model');
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 
-exports.register = async ({ username, password, role }) => {
+exports.register = async ({ username, password, role, email }) => {
   // Verifica si el usuario ya existe
   const existing = await User.findOne({ username });
   if (existing) throw new Error('El usuario ya existe');
@@ -18,6 +18,7 @@ exports.register = async ({ username, password, role }) => {
     username,
     password: hashedPassword,
     role: role || 'user',
+    email
   });
 
   // No retorna la contraseña

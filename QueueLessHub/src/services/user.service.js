@@ -22,4 +22,10 @@ const update = async (id, data) => {
 
 const remove = async (id) => User.findByIdAndDelete(id);
 
-module.exports = { create, getAll, getById, update, remove };
+const changePassword = async (id, newPassword) => {
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  return User.findByIdAndUpdate(id, { password: hashedPassword }, { new: true });
+}
+
+
+module.exports = { create, getAll, getById, update, remove, changePassword };

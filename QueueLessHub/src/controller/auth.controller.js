@@ -15,7 +15,6 @@ exports.register = async (req, res) => {
         name: req.body.name,
         specialty: req.body.specialty,
         phone: req.body.phone,
-        email: req.body.email,
         user: user.id
       });
       if (!doctor || !doctor.id) {

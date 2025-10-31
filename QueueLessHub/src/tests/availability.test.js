@@ -16,7 +16,8 @@ describe('Availability Endpoints', () => {
       .send({
         username: 'testdoctor',
         password: 'password123',
-        role: 'admin'
+        role: 'admin',
+        email: 'testdoctor@example.com'
       });
 
     userId = userResponse.body.user.id;
@@ -35,7 +36,6 @@ describe('Availability Endpoints', () => {
       name: 'Dr. Test',
       speciality: 'Test Speciality',
       phone: '+1234567890',
-      email: 'test@example.com',
       user: userId
     });
     doctorId = doctor._id.toString();
@@ -119,14 +119,14 @@ describe('Availability Endpoints', () => {
       const user2 = await User.create({
         username: 'doctor2',
         password: 'hashedpassword',
-        role: 'doctor'
+        role: 'doctor',
+        email: 'doctor2@example.com'
       });
 
       const doctor2 = await Doctor.create({
         name: 'Dr. Second',
         speciality: 'Another Speciality',
         phone: '+9876543210',
-        email: 'doctor2@example.com',
         user: user2._id
       });
 
