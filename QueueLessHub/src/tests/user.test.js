@@ -350,4 +350,40 @@ describe('User Endpoints', () => {
         .expect(401);
     });
   });
+
+  describe('POST /api/users/:id/password', () => {
+    it('should change own password successfully', async () => {
+      const response = await request(app)
+        .post(`/api/users/${userId}/password`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ currentPassword: 'password123', newPassword: 'newpassword123' })
+        .expect(200);
+
+      expect(response.body).toHaveProperty('message', 'Contraseña actualizada exitosamente');
+
+      // Verify new password works
+      const loginResponse = await request(app)
+        .post('/api/auth/login')
+        .send({ username: 'testuser', password: 'newpassword123' })
+        .expect(200);
+
+      expect(loginResponse.body).toHaveProperty('token');
+    });
+
+    it('should fail with incorrect current password', async () => {
+      await request(app)
+        .post(`/api/users/${userId}/password`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ currentPassword: 'wrongpassword', newPassword: 'irrelevant' })
+        .expect(401);
+    });
+
+    it('should fail with missing fields', async () => {
+      await request(app)
+        .post(`/api/users/${userId}/password`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ currentPassword: 'password123' })
+        .expect(400);
+    });
+  });
 });

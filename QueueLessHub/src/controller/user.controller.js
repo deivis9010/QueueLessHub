@@ -1,5 +1,7 @@
+const bcrypt = require('bcryptjs');
 const UserService = require('../services/user.service');
 const mongoose = require('mongoose');
+
 
 // Helper function to validate MongoDB ObjectId
 const isValidObjectId = (id) => {
