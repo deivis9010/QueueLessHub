@@ -18,6 +18,12 @@ exports.authMiddleware = async (req, res, next) => {
     // req.userData = await User.findById(decoded.id);
     next();
   } catch (err) {
+    // Manejo explícito de token expirado para dar una respuesta más clara al cliente
+    if (err && err.name === 'TokenExpiredError') {
+      // err.expiredAt está disponible en TokenExpiredError. Convertir a ISO para consistencia.
+      const expiredAtIso = err.expiredAt && err.expiredAt.toISOString ? err.expiredAt.toISOString() : undefined;
+      return res.status(401).json({ error: 'Token expirado', code: 'TOKEN_EXPIRED', expiredAt: expiredAtIso });
+    }
     res.status(401).json({ error: 'Token inválido' });
   }
 };
