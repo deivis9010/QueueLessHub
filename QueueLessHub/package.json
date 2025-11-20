@@ -11,7 +11,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:watchAll": "jest --watchAll --verbose",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "swagger:generate": "node scripts/generate-swagger.js"
   },
   "keywords": [],
   "author": "",
@@ -26,7 +27,9 @@
     "googleapis": "^153.0.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.15.2"
+    "mongoose": "^8.15.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^4.6.3"
   },
   "devDependencies": {
     "jest": "^30.2.0",

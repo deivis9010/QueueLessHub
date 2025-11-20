@@ -12,6 +12,9 @@ const doctorRoutes = require('./routes/doctor.routes');
 const availabilityRoutes = require('./routes/availability.routes');
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
+// Swagger
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
 
 // Configuración de seguridad con Helmet
 app.use(helmet({
@@ -37,6 +40,8 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+// Swagger UI - documentación de la API
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/api', (req, res) => {
   res.send('Bienvenido a la API de QueueLessHub');
 });
