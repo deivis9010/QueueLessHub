@@ -231,4 +231,9 @@ const handleChatFlowSpreadsheet = async ({ from, text }) => {
   }
   return { responsePayload };
 };
-module.exports = { handleChatFlowSpreadsheet };
+module.exports = {
+  handleChatFlowSpreadsheet,
+  createTextMessage,
+  createReplyButtonsMessage,
+  createListMessage
+};

@@ -1,7 +1,7 @@
 const request = require('supertest');
-const app = require('../app');
-const Conversation = require('../models/conversation.model');
-const Client = require('../models/client.model');
+const app = require('../../app');
+const Conversation = require('../../models/conversation.model');
+const Client = require('../../models/client.model');
 
 describe('Conversation Endpoints', () => {
   let authToken;

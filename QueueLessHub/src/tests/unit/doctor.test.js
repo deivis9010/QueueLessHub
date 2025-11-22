@@ -1,7 +1,7 @@
 const request = require('supertest');
-const app = require('../app');
-const Doctor = require('../models/doctor.model');
-const User = require('../models/user.model');
+const app = require('../../app');
+const Doctor = require('../../models/doctor.model');
+const User = require('../../models/user.model');
 
 describe('Doctor Endpoints', () => {
   let authToken;

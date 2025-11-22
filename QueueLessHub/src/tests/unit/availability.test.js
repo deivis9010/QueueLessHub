@@ -1,8 +1,8 @@
 const request = require('supertest');
-const app = require('../app');
-const Availability = require('../models/availability.model');
-const Doctor = require('../models/doctor.model');
-const User = require('../models/user.model');
+const app = require('../../app');
+const Availability = require('../../models/availability.model');
+const Doctor = require('../../models/doctor.model');
+const User = require('../../models/user.model');
 
 describe('Availability Endpoints', () => {
   let authToken;

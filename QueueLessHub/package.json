@@ -11,7 +11,12 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:watchAll": "jest --watchAll --verbose",
-    "test:coverage": "jest --coverage",
+    "test:coverage": "jest --coverage --coverageReporters=text --coverageReporters=text-summary",
+    "test:integration": "jest src/tests/integration",
+    "test:integration:coverage": "jest src/tests/integration --coverage --silent",
+    "test:unit": "jest src/tests --testPathIgnorePatterns=/integration/ --testPathIgnorePatterns=/e2e/",
+    "test:unit:coverage": "jest src/tests --testPathIgnorePatterns=/integration/ --testPathIgnorePatterns=/e2e/ --coverage --silent",
+    "test:e2e": "jest src/tests/e2e",
     "swagger:generate": "node scripts/generate-swagger.js"
   },
   "keywords": [],

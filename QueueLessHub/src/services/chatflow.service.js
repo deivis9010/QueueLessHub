@@ -533,4 +533,9 @@ const handleChatFlow = async ({ from, text, type, interactive }) => {
   return responsePayload;
 };
 
-module.exports = { handleChatFlow };
+module.exports = {
+  handleChatFlow,
+  createTextMessage,
+  createReplyButtonsMessage,
+  createListMessage
+};

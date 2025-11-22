@@ -1,6 +1,6 @@
 const request = require('supertest');
-const app = require('../app');
-const Client = require('../models/client.model');
+const app = require('../../app');
+const Client = require('../../models/client.model');
 
 describe('Client Endpoints', () => {
   let authToken;
