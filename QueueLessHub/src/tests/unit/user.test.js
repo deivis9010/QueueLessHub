@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../../app');
 const User = require('../../models/user.model');
+const UserService = require('../../services/user.service');
 
 describe('User - Complete Test Suite', () => {
   describe('User Endpoints - Integration Tests', () => {
@@ -171,6 +172,18 @@ describe('User - Complete Test Suite', () => {
           .get('/api/users')
           .expect(401);
       });
+
+      it('should handle service errors when getting all users', async () => {
+        jest.spyOn(UserService, 'getAll').mockRejectedValueOnce(new Error('Database error'));
+
+        const response = await request(app)
+          .get('/api/users')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(500);
+
+        expect(response.body).toHaveProperty('error', 'Database error');
+        UserService.getAll.mockRestore();
+      });
     });
 
     describe('GET /api/users/:id', () => {
@@ -220,6 +233,18 @@ describe('User - Complete Test Suite', () => {
           .get('/api/users/invalid-id')
           .set('Authorization', `Bearer ${adminToken}`)
           .expect(400);
+      });
+
+      it('should handle service errors when getting user by id', async () => {
+        jest.spyOn(UserService, 'getById').mockRejectedValueOnce(new Error('Database connection failed'));
+
+        const response = await request(app)
+          .get(`/api/users/${userId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(500);
+
+        expect(response.body).toHaveProperty('error', 'Database connection failed');
+        UserService.getById.mockRestore();
       });
     });
 
@@ -306,6 +331,52 @@ describe('User - Complete Test Suite', () => {
           .send({ username: 'updated' })
           .expect(400);
       });
+
+      it('should handle duplicate username during update', async () => {
+        // Create another user first
+        await User.create({
+          username: 'existinguser',
+          password: 'hashedpassword',
+          role: 'user'
+        });
+
+        const response = await request(app)
+          .put(`/api/users/${userId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ username: 'existinguser' }) // Try to update to existing username
+          .expect(400);
+
+        expect(response.body).toHaveProperty('error', 'El nombre de usuario ya existe');
+      });
+
+      it('should handle validation errors during update', async () => {
+        jest.spyOn(UserService, 'update').mockRejectedValueOnce({
+          name: 'ValidationError',
+          message: 'Validation failed: role must be valid'
+        });
+
+        const response = await request(app)
+          .put(`/api/users/${userId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ role: 'invalid_role' })
+          .expect(400);
+
+        expect(response.body).toHaveProperty('error', 'Validation failed: role must be valid');
+        UserService.update.mockRestore();
+      });
+
+      it('should handle service errors during update', async () => {
+        jest.spyOn(UserService, 'update').mockRejectedValueOnce(new Error('Update failed'));
+
+        const response = await request(app)
+          .put(`/api/users/${userId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ username: 'newtestuser' })
+          .expect(500);
+
+        expect(response.body).toHaveProperty('error', 'Update failed');
+        UserService.update.mockRestore();
+      });
     });
 
     describe('DELETE /api/users/:id', () => {
@@ -358,6 +429,27 @@ describe('User - Complete Test Suite', () => {
           .delete(`/api/users/${userToDeleteId}`)
           .expect(401);
       });
+
+      it('should return 400 for invalid user ID format on delete', async () => {
+        const response = await request(app)
+          .delete('/api/users/invalid-id')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(400);
+
+        expect(response.body).toHaveProperty('error', 'ID de usuario inválido');
+      });
+
+      it('should handle service errors during delete', async () => {
+        jest.spyOn(UserService, 'remove').mockRejectedValueOnce(new Error('Delete operation failed'));
+
+        const response = await request(app)
+          .delete(`/api/users/${userToDeleteId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(500);
+
+        expect(response.body).toHaveProperty('error', 'Delete operation failed');
+        UserService.remove.mockRestore();
+      });
     });
 
     describe('POST /api/users/:id/password', () => {
@@ -393,6 +485,60 @@ describe('User - Complete Test Suite', () => {
           .set('Authorization', `Bearer ${authToken}`)
           .send({ currentPassword: 'password123' })
           .expect(400);
+      });
+
+      it('should return 400 for invalid user ID format on password change', async () => {
+        const response = await request(app)
+          .post('/api/users/invalid-id/password')
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({ currentPassword: 'password123', newPassword: 'newpassword123' })
+          .expect(400);
+
+        expect(response.body).toHaveProperty('error', 'ID de usuario inválido');
+      });
+
+      it('should return 404 when user not found during password change', async () => {
+        const fakeId = '507f1f77bcf86cd799439011';
+        const response = await request(app)
+          .post(`/api/users/${fakeId}/password`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ currentPassword: 'password123', newPassword: 'newpassword123' })
+          .expect(404);
+
+        expect(response.body).toHaveProperty('error', 'Usuario no encontrado');
+      });
+
+      it('should fail when currentPassword is missing', async () => {
+        const response = await request(app)
+          .post(`/api/users/${userId}/password`)
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({ newPassword: 'newpassword123' })
+          .expect(400);
+
+        expect(response.body).toHaveProperty('error', 'Contraseña actual y nueva son requeridas');
+      });
+
+      it('should fail when newPassword is missing', async () => {
+        const response = await request(app)
+          .post(`/api/users/${userId}/password`)
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({ currentPassword: 'password123' })
+          .expect(400);
+
+        expect(response.body).toHaveProperty('error', 'Contraseña actual y nueva son requeridas');
+      });
+
+      it('should handle service errors during password change', async () => {
+        jest.spyOn(UserService, 'changePassword').mockRejectedValueOnce(new Error('Password change failed'));
+
+        const response = await request(app)
+          .post(`/api/users/${userId}/password`)
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({ currentPassword: 'password123', newPassword: 'newpassword123' })
+          .expect(500);
+
+        expect(response.body).toHaveProperty('error', 'Password change failed');
+        UserService.changePassword.mockRestore();
       });
     });
   });
