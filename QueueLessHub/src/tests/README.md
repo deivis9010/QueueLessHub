@@ -16,10 +16,28 @@ Este proyecto usa **Jest** y **Supertest** para pruebas de API con una base de d
 src/tests/
 ├── setup.js                     # Configuración global de testing
 ├── README.md                    # Esta guía completa
+├── FIXTURES_GUIDE.md           # 📚 Guía de fixtures, factories y helpers
 │
-├── unit/                        # Tests unitarios e integración (347 tests)
-│   ├── auth.test.js            # 26 tests: Auth endpoints + middleware
-│   ├── user.test.js            # 27 tests: CRUD usuarios + permisos
+├── fixtures/                    # 🎯 Datos estáticos reutilizables
+│   ├── index.js                # Exporta todos los fixtures
+│   ├── users.fixture.js        # Fixtures de usuarios
+│   ├── doctors.fixture.js      # Fixtures de doctores
+│   ├── clients.fixture.js      # Fixtures de clientes
+│   ├── availabilities.fixture.js # Fixtures de disponibilidad
+│   └── appointments.fixture.js # Fixtures de citas
+│
+├── factories/                   # 🏭 Generadores de datos dinámicos
+│   └── index.js                # Factories para todos los modelos
+│
+├── helpers/                     # 🛠️ Funciones auxiliares
+│   └── testHelpers.js          # Auth, requests, assertions, etc.
+│
+├── examples/                    # 📝 Ejemplos de uso
+│   └── user.refactored.example.js # Ejemplo refactorizado
+│
+├── unit/                        # Tests unitarios e integración (279 tests)
+│   ├── auth.test.js            # 33 tests: Auth endpoints + middleware
+│   ├── user.test.js            # 39 tests: CRUD usuarios + permisos
 │   ├── client.test.js          # 13 tests: CRUD clientes
 │   ├── doctor.test.js          # 12 tests: CRUD doctores
 │   ├── availability.test.js    # 13 tests: CRUD disponibilidad
@@ -42,7 +60,36 @@ src/tests/
     └── helpers/
 ```
 
-**Total: 347 tests pasando** ✅
+**Total: 279 tests pasando** ✅
+
+## 🎯 Nuevos Recursos de Testing
+
+### 📚 Fixtures, Factories y Helpers
+
+El proyecto ahora incluye recursos reutilizables para simplificar la escritura de tests:
+
+- **Fixtures**: Datos estáticos predefinidos (`fixtures/`)
+- **Factories**: Generadores de datos dinámicos con valores únicos (`factories/`)
+- **Helpers**: Funciones auxiliares para autenticación, requests y assertions (`helpers/`)
+
+**Ver [FIXTURES_GUIDE.md](./FIXTURES_GUIDE.md) para documentación completa y ejemplos.**
+
+### Ejemplo rápido:
+
+```javascript
+const fixtures = require('./fixtures');
+const { userFactory } = require('./factories');
+const { authHelpers } = require('./helpers/testHelpers');
+
+// Usar fixtures para datos conocidos
+const adminData = fixtures.users.admin;
+
+// Usar factories para datos únicos
+const userData = userFactory.create();
+
+// Usar helpers para autenticación
+const admin = await authHelpers.createAdmin();
+```
 
 ## 🚀 Comandos de Testing
 
