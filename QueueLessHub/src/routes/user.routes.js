@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controller/user.controller');
 const { authMiddleware, roleMiddleware, roleOrSelfMiddleware } = require('../middlewares/authMiddleware');
+const { validatePasswordMiddleware, validateNewPasswordMiddleware } = require('../middlewares/passwordValidator');
 
 /**
  * @openapi
@@ -43,13 +44,13 @@ router.get('/', authMiddleware, roleMiddleware('admin'), userController.getAllUs
 // Un usuario puede ver su propio perfil, admin puede ver cualquiera
 router.get('/:id', authMiddleware, roleOrSelfMiddleware('admin'), userController.getUserById);
 // Admin puede crear usuarios
-router.post('/', authMiddleware, roleMiddleware('admin'), userController.createUser);
+router.post('/', authMiddleware, roleMiddleware('admin'), validatePasswordMiddleware, userController.createUser);
 // Usuario puede actualizar su propio perfil, admin puede actualizar cualquiera
 router.put('/:id', authMiddleware, roleOrSelfMiddleware('admin'), userController.updateUser);
 // Solo admin puede eliminar usuarios
 router.delete('/:id', authMiddleware, roleMiddleware('admin'), userController.deleteUser);
 
-router.post('/:id/password', authMiddleware, userController.changePassword);
+router.post('/:id/password', authMiddleware, validateNewPasswordMiddleware, userController.changePassword);
 
 /**
  * @openapi

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const AuthController = require('../controller/auth.controller');
+const { validatePasswordMiddleware } = require('../middlewares/passwordValidator');
 
 /**
  * @openapi
@@ -58,7 +59,7 @@ const AuthController = require('../controller/auth.controller');
  *         description: Successful login
  */
 // Registro
-router.post('/register', AuthController.register);
+router.post('/register', validatePasswordMiddleware, AuthController.register);
 // Login
 router.post('/login', AuthController.login);
 
