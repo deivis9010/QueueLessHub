@@ -30,7 +30,7 @@
    - Pega todo el contenido de tu archivo `google-credentials.json` como valor
 
 5. **El código ya está preparado**:
-   El archivo `chatflow.spreadsheet.service.js` ya está modificado para leer las credenciales desde la variable de entorno `GOOGLE_CREDENTIALS_JSON` en producción, y desde el archivo local en desarrollo.
+   El archivo `chatflow.spreadsheet.service.ts` ya lee las credenciales desde la variable de entorno `GOOGLE_CREDENTIALS_JSON` en producción, y desde el archivo local en desarrollo.
 
 ## Consideraciones importantes
 

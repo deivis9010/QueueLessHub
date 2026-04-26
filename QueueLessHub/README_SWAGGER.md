@@ -4,8 +4,8 @@ This project now includes Swagger (OpenAPI) documentation.
 
 What was added
 - `swagger-jsdoc` and `swagger-ui-express` added to `package.json` dependencies.
-- `src/swagger.js` - swagger-jsdoc configuration and spec generator.
-- `src/app.js` now mounts the Swagger UI at `/api-docs`.
+- `src/swagger.ts` - swagger-jsdoc configuration and spec generator.
+- `src/app.ts` now mounts the Swagger UI at `/api-docs`.
 
 Install dependencies
 
@@ -30,11 +30,11 @@ http://localhost:3000/api-docs
 ```
 
 Notes
-- `swagger-jsdoc` will scan JSDoc comments in `./src/routes/*.js`, `./src/controllers/*.js` and `./src/models/*.js` to generate the OpenAPI spec. Add JSDoc-style OpenAPI comments to your route/controller files to document endpoints, parameters and schemas.
+- `swagger-jsdoc` will scan JSDoc comments in `./src/routes/*.ts`, `./src/controllers/*.ts` and `./src/models/*.ts` to generate the OpenAPI spec. Add JSDoc-style OpenAPI comments to your route/controller files to document endpoints, parameters and schemas.
 - You can set `SWAGGER_BASE_URL` env var to change the server URL shown in the docs.
 
 Examples
-- Add a JSDoc block above an Express route in `src/routes/auth.routes.js` like:
+- Add a JSDoc block above an Express route in `src/routes/auth.routes.ts` like:
 
 ```js
 /**

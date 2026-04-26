@@ -163,10 +163,10 @@ const limiter = rateLimit({
 
 ## Archivos Modificados
 
-1. **Nuevo**: `src/middlewares/rateLimit.middleware.js` - Configuración de limiters
-2. **Modificado**: `src/app.js` - Aplicación de limiters generales
-3. **Modificado**: `src/routes/appointment.routes.js` - Limiter de citas
-4. **Modificado**: `src/routes/client.routes.js` - Limiter de escritura
+1. **Nuevo**: `src/middlewares/rateLimit.middleware.ts` - Configuración de limiters
+2. **Modificado**: `src/app.ts` - Aplicación de limiters generales
+3. **Modificado**: `src/routes/appointment.routes.ts` - Limiter de citas
+4. **Modificado**: `src/routes/client.routes.ts` - Limiter de escritura
 5. **Modificado**: `.env.example` - Variables de configuración
 
 ## Referencias

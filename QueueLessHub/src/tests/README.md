@@ -14,47 +14,47 @@ Este proyecto usa **Jest** y **Supertest** para pruebas de API con una base de d
 
 ```
 src/tests/
-├── setup.js                     # Configuración global de testing
+├── setup.ts                     # Configuración global de testing
 ├── README.md                    # Esta guía completa
 ├── FIXTURES_GUIDE.md           # 📚 Guía de fixtures, factories y helpers
 │
 ├── fixtures/                    # 🎯 Datos estáticos reutilizables
-│   ├── index.js                # Exporta todos los fixtures
-│   ├── users.fixture.js        # Fixtures de usuarios
-│   ├── doctors.fixture.js      # Fixtures de doctores
-│   ├── clients.fixture.js      # Fixtures de clientes
-│   ├── availabilities.fixture.js # Fixtures de disponibilidad
-│   └── appointments.fixture.js # Fixtures de citas
+│   ├── index.ts                # Exporta todos los fixtures
+│   ├── users.fixture.ts        # Fixtures de usuarios
+│   ├── doctors.fixture.ts      # Fixtures de doctores
+│   ├── clients.fixture.ts      # Fixtures de clientes
+│   ├── availabilities.fixture.ts # Fixtures de disponibilidad
+│   └── appointments.fixture.ts # Fixtures de citas
 │
 ├── factories/                   # 🏭 Generadores de datos dinámicos
-│   └── index.js                # Factories para todos los modelos
+│   └── index.ts                # Factories para todos los modelos
 │
 ├── helpers/                     # 🛠️ Funciones auxiliares
-│   └── testHelpers.js          # Auth, requests, assertions, etc.
+│   └── testHelpers.ts          # Auth, requests, assertions, etc.
 │
 ├── examples/                    # 📝 Ejemplos de uso
-│   └── user.refactored.example.js # Ejemplo refactorizado
+│   └── user.refactored.example.ts # Ejemplo refactorizado
 │
 ├── unit/                        # Tests unitarios e integración (279 tests)
-│   ├── auth.test.js            # 33 tests: Auth endpoints + middleware
-│   ├── user.test.js            # 39 tests: CRUD usuarios + permisos
-│   ├── client.test.js          # 13 tests: CRUD clientes
-│   ├── doctor.test.js          # 12 tests: CRUD doctores
-│   ├── availability.test.js    # 13 tests: CRUD disponibilidad
-│   ├── appointment.test.js     # 37 tests: CRUD + generación citas
-│   ├── conversation.test.js    # 13 tests: CRUD conversaciones
-│   ├── bot.controller.test.js  # 11 tests: Controlador bot
-│   ├── bot.spreadsheet.test.js # 11 tests: Bot spreadsheet
-│   ├── chatflow.test.js        # 12 tests: Helpers chatflow
-│   ├── chatflow.spreadsheet.test.js # 10 tests: Helpers chatflow spreadsheet
-│   ├── dbErrorHandler.test.js  # 9 tests: Middleware errores DB
-│   └── debug.test.js           # 1 test: Debug JWT
+│   ├── auth.test.ts            # 33 tests: Auth endpoints + middleware
+│   ├── user.test.ts            # 39 tests: CRUD usuarios + permisos
+│   ├── client.test.ts          # 13 tests: CRUD clientes
+│   ├── doctor.test.ts          # 12 tests: CRUD doctores
+│   ├── availability.test.ts    # 13 tests: CRUD disponibilidad
+│   ├── appointment.test.ts     # 37 tests: CRUD + generación citas
+│   ├── conversation.test.ts    # 13 tests: CRUD conversaciones
+│   ├── bot.controller.test.ts  # 11 tests: Controlador bot
+│   ├── bot.spreadsheet.test.ts # 11 tests: Bot spreadsheet
+│   ├── chatflow.test.ts        # 12 tests: Helpers chatflow
+│   ├── chatflow.spreadsheet.test.ts # 10 tests: Helpers chatflow spreadsheet
+│   ├── dbErrorHandler.test.ts  # 9 tests: Middleware errores DB
+│   └── debug.test.ts           # 1 test: Debug JWT
 │
 ├── integration/                 # Tests de integración específicos (64 tests)
 │   ├── helpers/
-│   │   └── testSetup.js        # Setup para MongoDB in-memory
-│   ├── chatflow.integration.test.js            # 34 tests
-│   └── chatflow.spreadsheet.integration.test.js # 30 tests
+│   │   └── testSetup.ts        # Setup para MongoDB in-memory
+│   ├── chatflow.integration.test.ts            # 34 tests
+│   └── chatflow.spreadsheet.integration.test.ts # 30 tests
 │
 └── e2e/                         # Tests end-to-end (futuros)
     └── helpers/
@@ -115,7 +115,7 @@ npm run test:e2e                # Tests E2E (futuros)
 
 ### Ejecutar pruebas específicas
 ```bash
-npm test auth.test.js                           # Solo tests de auth
+npm test auth.test.ts                           # Solo tests de auth
 npm test appointment                            # Todos los tests que contienen "appointment"
 npm test -- --testNamePattern="should create"  # Tests que coincidan con el patrón
 npm test -- --watch                            # Modo watch para desarrollo
@@ -133,7 +133,7 @@ npm test -- bot                 # Bot tests (22 tests)
 
 ## 🧪 Qué se Prueba
 
-### 1. 🔐 Autenticación (`auth.test.js` - 26 tests)
+### 1. 🔐 Autenticación (`auth.test.ts` - 26 tests)
 - ✅ **Endpoints de Auth** (7 tests)
   - Registro de usuarios con/sin campos requeridos
   - Login con credenciales válidas/inválidas
@@ -146,7 +146,7 @@ npm test -- bot                 # Bot tests (22 tests)
 - ✅ **Token Expiration** (1 test)
   - Respuesta 401 con ISO timestamp de expiración
 
-### 2. 👥 Usuarios (`user.test.js` - 27 tests)
+### 2. 👥 Usuarios (`user.test.ts` - 27 tests)
 - ✅ **CRUD Completo con Permisos**
   - POST: Crear usuarios (solo admin)
   - GET: Listar todos (solo admin) y obtener propio
@@ -162,26 +162,26 @@ npm test -- bot                 # Bot tests (22 tests)
   - Permisos admin vs usuario regular
   - IDs inválidos (400) vs no existentes (404)
 
-### 3. 👨‍⚕️ Doctores (`doctor.test.js` - 12 tests)
+### 3. 👨‍⚕️ Doctores (`doctor.test.ts` - 12 tests)
 - ✅ Creación con relación a usuarios
 - ✅ Población automática de datos de usuario
 - ✅ CRUD completo con autenticación
 - ✅ Validación de campos requeridos
 - ✅ Manejo de errores 404 y 500
 
-### 4. 📞 Clientes (`client.test.js` - 13 tests)
+### 4. 📞 Clientes (`client.test.ts` - 13 tests)
 - ✅ Creación con validación de teléfono único
 - ✅ CRUD completo con autenticación obligatoria
 - ✅ Manejo de duplicación de teléfonos
 - ✅ Validación de IDs inválidos
 
-### 5. 📅 Disponibilidad (`availability.test.js` - 13 tests)
+### 5. 📅 Disponibilidad (`availability.test.ts` - 13 tests)
 - ✅ Creación de horarios de disponibilidad
 - ✅ Validación de días de la semana (0-6)
 - ✅ Relación con doctores y población
 - ✅ CRUD completo con autenticación
 
-### 6. 🗓️ Citas (`appointment.test.js` - 37 tests)
+### 6. 🗓️ Citas (`appointment.test.ts` - 37 tests)
 - ✅ **CRUD Básico** (13 tests)
   - Crear, listar, obtener, actualizar, eliminar
   - Validaciones de campos y autenticación
@@ -199,49 +199,49 @@ npm test -- bot                 # Bot tests (22 tests)
   - generateAppointmentsFromAvailability: Generar slots múltiples
   - getAvailabilityById: Helper de disponibilidad
 
-### 7. 💬 Conversaciones (`conversation.test.js` - 13 tests)
+### 7. 💬 Conversaciones (`conversation.test.ts` - 13 tests)
 - ✅ CRUD completo de conversaciones
 - ✅ Estados y pasos de conversación
 - ✅ Relación con clientes
 - ✅ Búsqueda de conversaciones activas
 
 ### 8. 🤖 Bot Controllers (22 tests)
-- ✅ **bot.controller.test.js** (11 tests)
+- ✅ **bot.controller.test.ts** (11 tests)
   - Verificación de webhook
   - Procesamiento de mensajes de texto
   - Mensajes interactivos (buttons, lists)
   - Manejo de errores de API
-- ✅ **bot.spreadsheet.test.js** (11 tests)
+- ✅ **bot.spreadsheet.test.ts** (11 tests)
   - Verificación de webhook con token
   - Procesamiento de diferentes tipos de mensajes
   - Integración con Google Spreadsheet
 
 ### 9. 💬 ChatFlow Services (76 tests)
-- ✅ **chatflow.test.js** (12 tests)
+- ✅ **chatflow.test.ts** (12 tests)
   - Helper functions: createTextMessage, createReplyButtonsMessage, createListMessage
   - Validación de estructura de mensajes WhatsApp
-- ✅ **chatflow.spreadsheet.test.js** (10 tests)
+- ✅ **chatflow.spreadsheet.test.ts** (10 tests)
   - Helpers para mensajes spreadsheet
   - Estructura de payloads WhatsApp Business API
-- ✅ **chatflow.integration.test.js** (34 tests)
+- ✅ **chatflow.integration.test.ts** (34 tests)
   - Flujo completo de agendamiento de citas
   - Selección de doctores y slots disponibles
   - Verificación de status y cancelación
   - Manejo de errores y timeouts (10 min)
   - Info de doctores con availability
-- ✅ **chatflow.spreadsheet.integration.test.js** (30 tests)
+- ✅ **chatflow.spreadsheet.integration.test.ts** (30 tests)
   - Flujo completo de captura de datos
   - Validación de nombre, seguro, número, fecha
   - Manejo de estados y reinicio
   - Integración con Google Spreadsheet
 
-### 10. 🔧 Middleware (`dbErrorHandler.test.js` - 9 tests)
+### 10. 🔧 Middleware (`dbErrorHandler.test.ts` - 9 tests)
 - ✅ Manejo de ValidationError de Mongoose
 - ✅ Manejo de CastError (IDs inválidos)
 - ✅ Manejo de errores de clave duplicada (11000/11001)
 - ✅ Pass-through de errores no relacionados con DB
 
-### 11. 🐛 Debug (`debug.test.js` - 1 test)
+### 11. 🐛 Debug (`debug.test.ts` - 1 test)
 - ✅ Verificación de generación y uso de tokens JWT
 
 ## ✨ Características del Sistema de Testing
@@ -286,17 +286,17 @@ npm run test:coverage  # Ver reporte completo
 |--------|------------|----------|-----------|-------|--------|
 | **Models** | 100% | 100% | 100% | 100% | ✅ Completo |
 | **Routes** | 100% | 100% | 100% | 100% | ✅ Completo |
-| **appointment.service.js** | 100% | 100% | 100% | 100% | ✅ Completo |
-| **auth.service.js** | 100% | 100% | 100% | 100% | ✅ Completo |
-| **availability.service.js** | 100% | 100% | 100% | 100% | ✅ Completo |
-| **client.service.js** | 100% | 100% | 100% | 100% | ✅ Completo |
-| **conversation.service.js** | 100% | 100% | 100% | 100% | ✅ Completo |
-| **doctor.service.js** | 100% | 100% | 100% | 100% | ✅ Completo |
-| **user.service.js** | 100% | 100% | 100% | 100% | ✅ Completo |
-| **authMiddleware.js** | 100% | 100% | 100% | 100% | ✅ Completo |
-| **dbErrorHandler.js** | 86.66% | 83.33% | 100% | 86.66% | ✅ Bueno |
-| **chatflow.service.js** | 80.55% | 55.03% | 72.72% | 80.95% | ⚠️ Mejorable |
-| **chatflow.spreadsheet.service.js** | 92.92% | 84.31% | 100% | 92.78% | ✅ Bueno |
+| **appointment.service.ts** | 100% | 100% | 100% | 100% | ✅ Completo |
+| **auth.service.ts** | 100% | 100% | 100% | 100% | ✅ Completo |
+| **availability.service.ts** | 100% | 100% | 100% | 100% | ✅ Completo |
+| **client.service.ts** | 100% | 100% | 100% | 100% | ✅ Completo |
+| **conversation.service.ts** | 100% | 100% | 100% | 100% | ✅ Completo |
+| **doctor.service.ts** | 100% | 100% | 100% | 100% | ✅ Completo |
+| **user.service.ts** | 100% | 100% | 100% | 100% | ✅ Completo |
+| **authMiddleware.ts** | 100% | 100% | 100% | 100% | ✅ Completo |
+| **dbErrorHandler.ts** | 86.66% | 83.33% | 100% | 86.66% | ✅ Bueno |
+| **chatflow.service.ts** | 80.55% | 55.03% | 72.72% | 80.95% | ⚠️ Mejorable |
+| **chatflow.spreadsheet.service.ts** | 92.92% | 84.31% | 100% | 92.78% | ✅ Bueno |
 | **Controllers** | 89.52% | 88.7% | 100% | 89.49% | ✅ Bueno |
 
 **Logros de Cobertura:**
@@ -510,7 +510,7 @@ npm test -- -t "should create"     # Forma corta
 
 ### Ejecutar un archivo específico
 ```bash
-npm test auth.test.js              # Solo tests de auth
+npm test auth.test.ts              # Solo tests de auth
 npm test -- appointment            # Tests que contengan "appointment"
 ```
 
@@ -574,10 +574,10 @@ npm test -- --watchAll          # Re-ejecutar todos los tests
 ### 1. Crear archivo de test
 ```bash
 # Para tests unitarios
-touch src/tests/unit/myfeature.test.js
+touch src/tests/unit/myfeature.test.ts
 
 # Para tests de integración
-touch src/tests/integration/myfeature.integration.test.js
+touch src/tests/integration/myfeature.integration.test.ts
 ```
 
 ### 2. Estructura básica

@@ -7,47 +7,47 @@ Esta guía te ayudará a migrar tests existentes para usar los nuevos fixtures, 
 ### ✅ Fixtures (Datos Estáticos)
 ```
 src/tests/fixtures/
-├── index.js                  # Exporta todos
-├── users.fixture.js          # 4 fixtures de usuarios
-├── doctors.fixture.js        # 5 fixtures de doctores
-├── clients.fixture.js        # 5 fixtures de clientes
-├── availabilities.fixture.js # 6 fixtures de disponibilidad
-└── appointments.fixture.js   # 7 fixtures de citas
+├── index.ts                  # Exporta todos
+├── users.fixture.ts          # 4 fixtures de usuarios
+├── doctors.fixture.ts        # 5 fixtures de doctores
+├── clients.fixture.ts        # 5 fixtures de clientes
+├── availabilities.fixture.ts # 6 fixtures de disponibilidad
+└── appointments.fixture.ts   # 7 fixtures de citas
 ```
 
 ### 🏭 Factories (Generadores Dinámicos)
 ```
 src/tests/factories/
-└── index.js                  # 6 factories completas
-    ├── userFactory
-    ├── doctorFactory
-    ├── clientFactory
-    ├── availabilityFactory
-    ├── appointmentFactory
-    └── conversationFactory
+└── index.ts                  # 6 factories completas
+  ├── userFactory
+  ├── doctorFactory
+  ├── clientFactory
+  ├── availabilityFactory
+  ├── appointmentFactory
+  └── conversationFactory
 ```
 
 ### 🛠️ Helpers (Funciones Auxiliares)
 ```
 src/tests/helpers/
-└── testHelpers.js
-    ├── authHelpers          # Autenticación simplificada
-    ├── requestHelpers       # Requests HTTP con auth
-    ├── modelHelpers         # Creación directa en DB
-    ├── assertionHelpers     # Verificaciones comunes
-    └── waitHelpers          # Manejo de tiempo
+└── testHelpers.ts
+  ├── authHelpers          # Autenticación simplificada
+  ├── requestHelpers       # Requests HTTP con auth
+  ├── modelHelpers         # Creación directa en DB
+  ├── assertionHelpers     # Verificaciones comunes
+  └── waitHelpers          # Manejo de tiempo
 ```
 
 ### 📝 Documentación
 - `FIXTURES_GUIDE.md` - Guía completa de uso
-- `testResources.js` - Export unificado
-- `examples/user.refactored.example.js` - Ejemplo completo
+-- `testResources.ts` - Export unificado
+-- `examples/user.refactored.example.ts` - Ejemplo completo
 
 ## 🚀 Inicio Rápido
 
 ### Importar Recursos
 
-```javascript
+```typescript
 // Opción 1: Importar todo desde un archivo
 const { fixtures, userFactory, authHelpers } = require('../testResources');
 
@@ -62,7 +62,7 @@ const { authHelpers, assertionHelpers } = require('../helpers/testHelpers');
 ### Paso 1: Identificar Datos Repetidos
 
 **Antes:**
-```javascript
+```typescript
 beforeEach(async () => {
   const adminResponse = await request(app)
     .post('/api/auth/register')
@@ -76,7 +76,7 @@ beforeEach(async () => {
 ```
 
 **Después:**
-```javascript
+```typescript
 const { authHelpers } = require('../helpers/testHelpers');
 
 beforeEach(async () => {
@@ -88,7 +88,7 @@ beforeEach(async () => {
 ### Paso 2: Usar Fixtures para Datos Conocidos
 
 **Antes:**
-```javascript
+```typescript
 const doctorData = {
   name: 'Dr. Juan Pérez',
   specialty: 'Cardiología',
@@ -97,7 +97,7 @@ const doctorData = {
 ```
 
 **Después:**
-```javascript
+```typescript
 const fixtures = require('../fixtures');
 const doctorData = {
   ...fixtures.doctors.cardiology,
@@ -108,7 +108,7 @@ const doctorData = {
 ### Paso 3: Usar Factories para Datos Únicos
 
 **Antes:**
-```javascript
+```typescript
 const userData = {
   username: 'testuser_' + Date.now(),
   password: 'password123',
@@ -117,7 +117,7 @@ const userData = {
 ```
 
 **Después:**
-```javascript
+```typescript
 const { userFactory } = require('../factories');
 const userData = userFactory.create();
 ```
@@ -125,7 +125,7 @@ const userData = userFactory.create();
 ### Paso 4: Simplificar Assertions
 
 **Antes:**
-```javascript
+```typescript
 expect(response.body).toHaveProperty('id');
 expect(response.body.username).toBe(userData.username);
 expect(response.body.role).toBe(userData.role);
@@ -133,7 +133,7 @@ expect(response.body).not.toHaveProperty('password');
 ```
 
 **Después:**
-```javascript
+```typescript
 const { assertionHelpers } = require('../helpers/testHelpers');
 assertionHelpers.expectUserShape(response.body, userData);
 ```
@@ -143,7 +143,7 @@ assertionHelpers.expectUserShape(response.body, userData);
 ### Caso 1: Test con Autenticación
 
 **Antes (20 líneas):**
-```javascript
+```typescript
 describe('User Tests', () => {
   let authToken;
 
@@ -176,7 +176,7 @@ describe('User Tests', () => {
 ```
 
 **Después (8 líneas):**
-```javascript
+```typescript
 const { authHelpers, requestHelpers } = require('../helpers/testHelpers');
 
 describe('User Tests', () => {
@@ -197,7 +197,7 @@ describe('User Tests', () => {
 ### Caso 2: Crear Múltiples Registros
 
 **Antes:**
-```javascript
+```typescript
 beforeEach(async () => {
   await User.create({
     username: 'doctor1',
@@ -218,7 +218,7 @@ beforeEach(async () => {
 ```
 
 **Después:**
-```javascript
+```typescript
 const { userFactory } = require('../factories');
 
 beforeEach(async () => {
@@ -232,7 +232,7 @@ beforeEach(async () => {
 ### Caso 3: Datos con Relaciones
 
 **Antes:**
-```javascript
+```typescript
 it('should create appointment', async () => {
   const client = await Client.create({
     name: 'Test Client',
@@ -260,7 +260,7 @@ it('should create appointment', async () => {
 ```
 
 **Después:**
-```javascript
+```typescript
 const { clientFactory, doctorFactory, appointmentFactory } = require('../factories');
 
 it('should create appointment', async () => {
@@ -281,7 +281,7 @@ it('should create appointment', async () => {
 ### Patrón 1: Setup Completo de Test
 
 **Antes:**
-```javascript
+```typescript
 let authToken, userId, doctorId, clientId;
 
 beforeEach(async () => {
@@ -290,7 +290,7 @@ beforeEach(async () => {
 ```
 
 **Después:**
-```javascript
+```typescript
 const { authHelpers, modelHelpers } = require('../helpers/testHelpers');
 const { doctorFactory, clientFactory } = require('../factories');
 
@@ -309,7 +309,7 @@ beforeEach(async () => {
 ### Patrón 2: Tests de Error
 
 **Antes:**
-```javascript
+```typescript
 it('should return 404', async () => {
   const response = await request(app)
     .get('/api/users/invalid-id')
@@ -376,8 +376,8 @@ it('should return 404', async () => {
 ## 📚 Recursos Adicionales
 
 - Ver `FIXTURES_GUIDE.md` para documentación completa
-- Ver `examples/user.refactored.example.js` para ejemplo real
-- Consultar `testResources.js` para ver todas las exportaciones
+ - Ver `examples/user.refactored.example.ts` para ejemplo real
+ - Consultar `testResources.ts` para ver todas las exportaciones
 
 ## 🤝 Contribuir
 
@@ -403,7 +403,7 @@ Para cada test que migres:
 ## 🎓 Próximos Pasos
 
 1. Lee `FIXTURES_GUIDE.md` para familiarizarte con los recursos
-2. Revisa `examples/user.refactored.example.js` para ver el antes/después
+2. Revisa `examples/user.refactored.example.ts` para ver el antes/después
 3. Intenta migrar un test simple primero
 4. Gradualmente adopta los patrones en tus tests
 
