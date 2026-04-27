@@ -13,12 +13,23 @@ export const authMiddleware = async (
 ): Promise<void> => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  // Prefer httpOnly cookie first, fall back to Authorization header
+  let token: string | undefined;
+
+  if (req.cookies?.accessToken) {
+    token = req.cookies.accessToken;
+  } else if (authHeader && authHeader.startsWith('Bearer ')) {
+    const headerToken = authHeader.split(' ')[1];
+    // Validate that token is not the literal string "null" or empty
+    if (headerToken && headerToken !== 'null' && headerToken.length > 10) {
+      token = headerToken;
+    }
+  }
+
+  if (!token) {
     res.status(401).json({ error: 'Token requerido' });
     return;
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;

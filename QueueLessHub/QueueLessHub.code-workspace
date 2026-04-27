@@ -8,9 +8,9 @@
   "settings": {
     "jest.jestCommandLine": "npm test --",
     "jest.runMode": {
-      "type": "watch"
+      "type": "on-demand"
     },
-    "jest.autoEnable": true
+    "jest.autoEnable": false
   },
   "extensions": {
     "recommendations": [

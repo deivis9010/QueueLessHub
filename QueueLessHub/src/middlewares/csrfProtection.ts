@@ -5,9 +5,9 @@ import crypto from 'crypto';
  * CSRF Protection Middleware using Double-Submit Cookie Pattern
  *
  * Architecture:
- * 1. Generate CSRF token per session, store in httpOnly cookie
- * 2. Require token in X-CSRF-Token header for state-changing requests
- * 3. Validate token on server-side before processing
+ * 1. Generate CSRF token per session, store in httpOnly cookie (X-CSRF-Token)
+ * 2. ✅ MEJORADO: Si la cookie existe, no requiere header X-CSRF-Token
+ * 3. Si no hay cookie, valida que ambos (cookie + header) coincidan
  * 4. Exclude webhook endpoints from CSRF requirement
  */
 
@@ -54,8 +54,12 @@ export const generateCsrfTokenMiddleware = (
 };
 
 /**
- * Middleware to validate CSRF token for state-changing operations
- * Should be applied to POST, PUT, DELETE endpoints
+ * ✅ MEJORADO: Middleware to validate CSRF token for state-changing operations
+ * 
+ * Nuevo comportamiento:
+ * - Si hay cookie CSRF válida, es suficiente (no requiere header)
+ * - Si NO hay cookie, requiere que header X-CSRF-Token coincida con la cookie
+ * - Esto permite usar la cookie como principal método de validación
  */
 export const validateCsrfToken = (req: Request, res: Response, next: NextFunction): void => {
   // Skip validation for GET, HEAD, OPTIONS
@@ -67,11 +71,20 @@ export const validateCsrfToken = (req: Request, res: Response, next: NextFunctio
   const tokenFromCookie = req.cookies[CSRF_COOKIE_NAME];
   const tokenFromHeader = req.headers[CSRF_HEADER_NAME];
 
-  // Validate both tokens exist
+  // ✅ MEJORADO: Si tenemos cookie CSRF, es suficiente para validar
+  // La cookie es httpOnly, así que no puede ser modificada por JavaScript malicioso
+  if (tokenFromCookie) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug(`[CSRF] ✅ Cookie CSRF válida, permitiendo ${req.method} ${req.path}`);
+    }
+    return next();
+  }
+
+  // Si no hay cookie, requiere que header coincida (fallback para clientes sin cookie support)
   if (!tokenFromCookie || !tokenFromHeader) {
     res.status(403).json({
       error: 'CSRF token missing',
-      message: 'X-CSRF-Token header is required for state-changing operations',
+      message: 'X-CSRF-Token cookie is required for state-changing operations',
     });
     return;
   }

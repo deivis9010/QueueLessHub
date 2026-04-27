@@ -1,4 +1,5 @@
 import { Client } from './client.types';
+import { Document } from 'mongoose';
 
 /**
  * Conversation message
@@ -27,8 +28,8 @@ export type ConversationStep =
 /**
  * Conversation document in database
  */
-export interface Conversation {
-  _id?: string;
+export interface Conversation extends Document {
+  _id: string;
   id?: string;
   client?: string;
   state?: string;
