@@ -1,13 +1,8 @@
 # Development Guide - QueueLessHub
 
-## Quick Skills Reference
-
-Load the most relevant guidance first:
-
-- `/workflow-commands` -> npm scripts, local run, debug, validation commands
-- `/testing-requirements` -> test commands, fixtures, integration patterns
-- `/pre-commit-checklist` -> required checks before asking for review
-- `/error-handling` -> how to validate runtime failures while developing
+> For the full skills index, see [.github/copilot-instructions.md](.github/copilot-instructions.md)
+> or load `/workflow-commands` and `/pre-commit-checklist` directly — they are the most relevant
+> skills for day-to-day development.
 
 ## Purpose
 

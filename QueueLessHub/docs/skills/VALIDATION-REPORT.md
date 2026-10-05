@@ -12,6 +12,10 @@ This file is a lightweight validation summary for the skills documentation in Qu
 - Commands and workflow: covered by `WORKFLOW-COMMANDS.md`
 - Pre-commit readiness: covered by `PRE-COMMIT-CHECKLIST.md`
 - Error handling: covered by `ERROR-HANDLING.md`
+- New endpoint scaffolding: covered by `NEW-ENDPOINT.md`
+- Webhook/URL security audits: covered by `SECURITY-AUDIT-WEBHOOK.md`
+- Test fixtures/factories/helpers: covered by `NEW-TEST-FIXTURES.md`
+- Swagger/OpenAPI documentation: covered by `DOCUMENT-ENDPOINT.md`
 
 ## Validation Notes
 

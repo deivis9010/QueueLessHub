@@ -549,6 +549,40 @@ describe('Appointment - Complete Test Suite', () => {
         const result = await AppointmentService.getNextConfirmedAppointment(clientId);
         expect(result).toBeNull();
       });
+
+      it('should not return past appointments', async () => {
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - 7);
+
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7);
+
+        await Appointment.create([
+          {
+            client: clientId,
+            availability: availabilityId,
+            date: pastDate,
+            hour: '10:00',
+            status: 'scheduled',
+            confirmed: true,
+          },
+          {
+            client: clientId,
+            availability: availabilityId,
+            date: futureDate,
+            hour: '14:00',
+            status: 'scheduled',
+            confirmed: true,
+          },
+        ]);
+
+        const result = await AppointmentService.getNextConfirmedAppointment(clientId);
+
+        expect(result).toBeTruthy();
+        expect(result.client._id.toString()).toBe(clientId);
+        // Should return the future appointment, not the past one
+        expect(new Date(result.date).getTime()).toBe(futureDate.getTime());
+      });
     });
 
     describe('cancelConfirmedAppointment', () => {

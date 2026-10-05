@@ -7,6 +7,15 @@ const noopLimiter: RequestHandler = (_req: Request, _res: Response, next: NextFu
 };
 
 /**
+ * Skip function for webhook routes that come through ngrok
+ * Skip rate limiting for both webhook verification (GET) and event processing (POST) requests
+ */
+const skipWebhookVerification = (req: Request): boolean => {
+  // Skip rate limiting for any webhook requests (GET verification or POST events)
+  return req.path.includes('/api/bot/webhook');
+};
+
+/**
  * General Rate Limiter for the entire API
  * Moderate limit for general application usage
  */
@@ -15,6 +24,7 @@ const generalLimiter = isTestEnvironment
   : rateLimit({
       windowMs: 15 * 60 * 1000,
       max: 100,
+      skip: skipWebhookVerification,
       message: {
         error: 'Too many requests from this IP, please try again later.',
         retryAfter: '15 minutes',

@@ -1,16 +1,22 @@
-# Skills Reference
+# Project Guidance Reference
 
-This directory contains specialized documentation organized by topic. Load specific skills on-demand using:
+This directory remains the detailed documentation source for project guidance. Copilot-discoverable skills live in `.github/skills/`; each skill points to the relevant document here so this documentation can remain the canonical detailed reference.
+
+Load a Copilot skill on demand using:
 
 ```
-/coding-standards      # Code patterns, architecture, layered structure
-/testing-requirements  # Testing rules, patterns, coverage requirements
-/security-guidelines   # Security best practices, input validation
-/api-design-rules      # REST API design, responses, status codes
-/naming-conventions    # File, class, function, and variable naming
-/workflow-commands     # npm commands, development workflow
-/pre-commit-checklist  # Pre-commit workflow and requirements
-/error-handling        # Error handling patterns and HttpError usage
+/coding-standards        # Code patterns, architecture, layered structure
+/testing-requirements    # Testing rules, patterns, coverage requirements
+/security-guidelines     # Security best practices, input validation
+/api-design-rules        # REST API design, responses, status codes
+/naming-conventions      # File, class, function, and variable naming
+/workflow-commands       # npm commands, development workflow
+/pre-commit-checklist    # Pre-commit workflow and requirements
+/error-handling          # Error handling patterns and HttpError usage
+/new-endpoint            # Scaffold a new endpoint (route -> controller -> service -> model -> tests)
+/security-audit-webhook  # Audit a webhook/URL-accepting endpoint against SSRF/CSRF/rate-limit rules
+/new-test-fixtures       # Add fixtures/factories/helpers for a model
+/document-endpoint       # Add or update the Swagger/OpenAPI block for a route
 ```
 
 ## Getting Started
@@ -32,19 +38,14 @@ This directory contains specialized documentation organized by topic. Load speci
 | **workflow-commands** | Need to run commands, debugging, troubleshooting |
 | **pre-commit-checklist** | Before committing code changes |
 | **error-handling** | Raising errors, catching exceptions, logging |
+| **new-endpoint** | Adding a new resource or action, scaffolding route/controller/service/model/tests |
+| **security-audit-webhook** | Touching `/api/bot` routes or any endpoint accepting an external URL |
+| **new-test-fixtures** | A new model needs reusable test data, or tests duplicate the same setup |
+| **document-endpoint** | A public endpoint was added or its request/response/status codes changed |
 
-## Quick Skills Model
-
-Use the most relevant guidance first instead of reading every document:
-
-- `/coding-standards` -> layered architecture, controller/service boundaries, repository conventions
-- `/testing-requirements` -> Jest patterns, fixtures, integration tests, coverage targets
-- `/security-guidelines` -> auth, rate limiting, input validation, secrets, webhook safety
-- `/api-design-rules` -> REST naming, status codes, request and response shapes
-- `/naming-conventions` -> file names, symbols, env vars, route names
-- `/workflow-commands` -> npm scripts, local run, debug, validation commands
-- `/pre-commit-checklist` -> required checks before asking for review
-- `/error-handling` -> middleware errors, async flow, DB errors, status mapping
+The full skills list with one-line descriptions lives in
+[.github/copilot-instructions.md](../../.github/copilot-instructions.md) under "Quick Skills
+Reference" — refer there instead of duplicating it here.
 
 ## Content Quality
 

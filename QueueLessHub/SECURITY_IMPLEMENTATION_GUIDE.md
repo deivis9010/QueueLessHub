@@ -773,7 +773,7 @@ Example endpoints:
 ## Support
 
 For questions or issues, please refer to:
-- [SECURITY_ROADMAP.md](SECURITY_ROADMAP.md) - Implementation details
+- [SECURITY_STATUS.md](SECURITY_STATUS.md) - Current security status and roadmap
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
 - [API Documentation](swagger-ui) - Interactive API docs
 

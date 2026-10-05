@@ -1,6 +1,8 @@
 import express from 'express';
 
 import botController from '../controller/bot.controller';
+import { webhookLimiter } from '../middlewares/rateLimit.middleware';
+import { skipCsrf } from '../middlewares/csrfProtection';
 
 const router = express.Router();
 
@@ -37,7 +39,9 @@ const router = express.Router();
  *       200:
  *         description: Webhook processed
  */
-router.post('/webhook', botController.postWebhook);
+// Rate limiter and CSRF skip only for POST (webhook events)
+// GET is excluded because it's a verification request from external service
+router.post('/webhook', webhookLimiter, skipCsrf, botController.postWebhook);
 router.get('/webhook', botController.getWebhook);
 
 export default router;

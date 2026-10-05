@@ -1,14 +1,8 @@
 # Architecture Guide - QueueLessHub
 
-## Quick Skills Reference
-
-Load the most relevant guidance first:
-
-- `/coding-standards` -> layered architecture, controller/service boundaries, repository conventions
-- `/api-design-rules` -> REST naming, status codes, request and response shapes
-- `/error-handling` -> middleware errors, async flow, DB errors, status mapping
-- `/testing-requirements` -> testing scope for each layer
-- `/security-guidelines` -> auth, rate limiting, input validation, webhook safety
+> For the full skills index (`/coding-standards`, `/testing-requirements`, `/security-guidelines`, etc.),
+> see [.github/copilot-instructions.md](.github/copilot-instructions.md) or load `/coding-standards`
+> and `/api-design-rules` directly — they are the most relevant skills for this document.
 
 ## Purpose
 

@@ -5,6 +5,19 @@ import mongoSanitize from 'express-mongo-sanitize';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
 
+const app = express();
+
+// Configure trust proxy BEFORE importing rate limiting middlewares
+// This is critical for ngrok and reverse proxy environments
+if (
+  process.env.NODE_ENV === 'production' ||
+  process.env.TRUST_PROXY === 'true' ||
+  process.env.NODE_ENV === 'development'
+) {
+  app.set('trust proxy', 1);
+}
+
+// Import routes and middlewares AFTER configuring trust proxy
 import botRoutes from './routes/bot.routes';
 import botSpreadsheetRoutes from './routes/bot.spreadsheet.routes';
 import appointmentRoutes from './routes/appointment.routes';
@@ -22,12 +35,6 @@ import {
   skipCsrf,
 } from './middlewares/csrfProtection';
 import dbErrorHandler from './middlewares/dbErrorHandler';
-
-const app = express();
-
-if (process.env.NODE_ENV === 'production' || process.env.TRUST_PROXY === 'true') {
-  app.set('trust proxy', 1);
-}
 
 const corsOptions = {
   origin: (
@@ -83,8 +90,14 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
+// Sanitization middleware - skip for webhook routes that use dots in query params
 if (process.env.NODE_ENV !== 'test') {
-  app.use(
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Skip mongoSanitize for webhook routes that use dots in query parameters
+    if (req.path.includes('/api/bot/webhook')) {
+      return next();
+    }
+    // Apply mongoSanitize for all other routes
     mongoSanitize({
       replaceWith: '_',
       onSanitize: ({ req, key }: { req: Request; key: string }) => {
@@ -92,8 +105,8 @@ if (process.env.NODE_ENV !== 'test') {
           `[SANITIZE] Potential NoSQL injection attempt detected in ${req.method} ${req.url} - Key: ${key}`
         );
       },
-    })
-  );
+    })(req, res, next);
+  });
 }
 
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -112,7 +125,7 @@ const csrfValidationMiddleware =
     : validateCsrfToken;
 
 app.use('/api/bot/spreadsheet', webhookLimiter, skipCsrf, botSpreadsheetRoutes);
-app.use('/api/bot', webhookLimiter, skipCsrf, botRoutes);
+app.use('/api/bot', skipCsrf, botRoutes);
 app.use('/api/appointments', csrfValidationMiddleware, appointmentRoutes);
 app.use('/api/clients', csrfValidationMiddleware, clientRoutes);
 app.use('/api/conversations', csrfValidationMiddleware, conversationRoutes);

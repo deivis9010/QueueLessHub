@@ -5,19 +5,26 @@ import { handleChatFlow } from '../services/chatflow.service';
 
 const getWebhook = (req: Request, res: Response): void => {
   const verifyToken = process.env.WHATSAPP_TOKEN;
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
+  
+  // Support both hub.mode and hub_mode (in case of sanitization)
+  const mode = req.query['hub.mode'] || req.query['hub_mode'];
+  
+  // Support both hub.verify_token and hub_verify_token (in case of sanitization)
+  const token = req.query['hub.verify_token'] || req.query['hub_verify_token'];
+  
+  // Support both hub.challenge and hub_challenge (in case of sanitization)
+  const challenge = req.query['hub.challenge'] || req.query['hub_challenge'];
 
-  console.log('🔗 Verificando Webhook', mode, token, challenge);
+  console.log('🔗 Verificando Webhook subscribe', mode, 'token:', token?.toString().slice(0, 20) + '...', 'challenge:', challenge);
+  console.log('Verify token configurado:', verifyToken?.toString().slice(0, 20) + '...');
 
   if (mode && token && mode === 'subscribe' && token === verifyToken) {
-    console.log('🟢 Webhook verificado');
-    res.status(200).send(challenge);
+    console.log('🟢 Webhook verificado correctamente');
+    res.status(200).send(String(challenge));
     return;
   }
 
-  console.log('🔴 Webhook no verificado');
+  console.log('🔴 Webhook no verificado - token no coincide');
   res.sendStatus(403);
 };
 

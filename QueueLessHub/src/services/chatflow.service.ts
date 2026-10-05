@@ -79,6 +79,35 @@ const createListMessage = (
   },
 });
 
+/**
+ * Interface para objetos que contienen una propiedad _id
+ * Usada para extraer IDs de objetos populados por MongoDB
+ */
+interface HasObjectId {
+  _id: string | { toString(): string };
+}
+
+/**
+ * Type guard para verificar si un valor tiene propiedad _id
+ */
+const hasObjectId = (value: unknown): value is HasObjectId => {
+  return value !== null && typeof value === 'object' && '_id' in value;
+};
+
+/**
+ * Helper para extraer el ID de un valor que puede ser un string o un objeto con _id.
+ * Evita los problemas de serialización cuando MongoDB popula relaciones.
+ * @param value - Puede ser un string (ID directo) o un objeto con propiedad _id (populado)
+ * @returns El ID como string, o string vacío si no se puede extraer
+ */
+const extractObjectId = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (hasObjectId(value)) {
+    return typeof value._id === 'string' ? value._id : String(value._id);
+  }
+  return '';
+};
+
 const handleChatFlow = async ({
   from,
   text,
@@ -109,6 +138,7 @@ const handleChatFlow = async ({
     const now = new Date();
 
     if (conversation) {
+      console.log(`Existing conversation found for client ${client._id}, last updated at ${conversation.updatedAt}, created at ${conversation.createdAt}`);
       const lastUpdateValue = conversation.updatedAt ?? conversation.createdAt ?? now;
       const diffMs = now.getTime() - new Date(lastUpdateValue).getTime();
       if (diffMs > 10 * 60 * 1000) {
@@ -150,7 +180,8 @@ const handleChatFlow = async ({
     if (['schedule_app', 'check_status', 'cancel'].includes(processedInput)) {
       conversation.currentStep = 'awaiting_choice';
     }
-
+    console.log(`Processing input for conversation ${conversation._id}, current step: ${conversation.currentStep}, processed input: ${processedInput}`);
+    console.log('Processed input details:', { type, interactive, processedInput });
     switch (conversation.currentStep) {
       case 'start':
         responsePayload = createReplyButtonsMessage(from, 'Hi 👋, what do you need?', [
@@ -179,62 +210,76 @@ const handleChatFlow = async ({
           conversation.currentStep = 'awaiting_doctor';
         } else if (processedInput === 'check_status') {
           try {
-            const appointment = (await AppointmentService.getNextConfirmedAppointment(
+            // First, auto-cancel any past appointments
+            const allAppointments = (await AppointmentService.getAllConfirmedAppointmentsForClient(
               String(client._id)
-            )) as unknown as AppointmentRecord | null;
-            let doctorInfo = '';
-            if (appointment && appointment.availability) {
-              const availability = (await AppointmentService.getAvailabilityById(
-                String(appointment.availability)
-              )) as unknown as Availability | null;
-              if (availability && availability.doctor) {
-                const doctor = (await DoctorService.getById(
-                  String(availability.doctor)
-                )) as unknown as DoctorRecord | null;
-                if (doctor) {
-                  doctorInfo = ` with Dr. ${doctor.name} (${doctor.specialty || 'No specialty'})`;
+            )) as unknown as AppointmentRecord[];
+            const now = new Date();
+            let missedAppointmentsCount = 0;
+
+            for (const app of allAppointments) {
+              if (new Date(app.date) < now && app.status !== 'cancelled') {
+                try {
+                  await AppointmentService.update(String(app._id), {
+                    confirmed: false,
+                    status: 'cancelled',
+                  });
+                  missedAppointmentsCount++;
+                } catch (e) {
+                  console.error('Error auto-cancelling past appointment:', e);
                 }
               }
             }
 
+            // Then get the next future appointment
+            const appointment = (await AppointmentService.getNextConfirmedAppointment(
+              String(client._id)
+            )) as unknown as AppointmentRecord | null;
+
+            // If there are future appointments, show the next one
             if (appointment) {
-              const appointmentDate = new Date(appointment.date);
-              const nowCheck = new Date();
-              if (appointmentDate < nowCheck) {
-                await AppointmentService.update(String(appointment._id), {
-                  confirmed: false,
-                  status: 'cancelled',
-                });
-                responsePayload = createTextMessage(
-                  from,
-                  `Your appointment${doctorInfo} on ${appointmentDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })} was missed and has been cancelled.`
-                );
-              } else {
-                responsePayload = createTextMessage(
-                  from,
-                  `Your next appointment${doctorInfo} is on ${appointmentDate.toLocaleString('en-US')}`
-                );
+              let doctorInfo = '';
+              if (appointment.availability) {
+                const availability = (await AppointmentService.getAvailabilityById(
+                  extractObjectId(appointment.availability)
+                )) as unknown as Availability | null;
+                if (availability && availability.doctor) {
+                  const doctor = (await DoctorService.getById(
+                    String(availability.doctor)
+                  )) as unknown as DoctorRecord | null;
+                  if (doctor) {
+                    doctorInfo = ` with Dr. ${doctor.name} (${doctor.specialty || 'No specialty'})`;
+                  }
+                }
               }
+
+              const appointmentDate = new Date(appointment.date);
+              responsePayload = createTextMessage(
+                from,
+                `Your next appointment${doctorInfo} is on ${appointmentDate.toLocaleString('en-US')}`
+              );
+              conversation.currentStep = 'finished';
+            } else if (missedAppointmentsCount > 0) {
+              // If no future appointments but we cancelled some past ones, notify user
+              responsePayload = createTextMessage(
+                from,
+                `You missed ${missedAppointmentsCount} appointment(s) and they have been cancelled. You have no future appointments scheduled.`
+              );
+              conversation.currentStep = 'finished';
             } else {
+              // No appointments at all
               responsePayload = createTextMessage(from, 'You have no scheduled appointments.');
+              conversation.currentStep = 'finished';
             }
           } catch (err) {
-            console.error('Error al consultar citas:', err);
+            console.error('Error checking appointment status:', err);
             responsePayload = createTextMessage(
               from,
               '❌ There was an error checking your appointments. Please try again later.'
             );
-            // keep flow in start so user can try again
             conversation.currentStep = 'start';
             break;
           }
-          // successful check
-          conversation.currentStep = 'finished';
         } else if (processedInput === 'cancel') {
           const appointments = (await AppointmentService.getAllConfirmedAppointmentsForClient(
             String(client._id)
@@ -264,16 +309,33 @@ const handleChatFlow = async ({
             );
             conversation.currentStep = 'finished';
           } else {
-            const rows = futureApps.slice(0, 10).map((app) => ({
+            const rows = futureApps.slice(0, 9).map((app) => ({
               id: `cancel_appointment_${String(app._id)}`,
               title: new Date(app.date).toLocaleDateString(),
               description: 'Click to cancel this appointment',
             }));
-            responsePayload = createListMessage(from, 'Select to cancel:', 'Cancel app', rows);
+            // Add exit option
+            rows.push({
+              id: 'cancel_exit',
+              title: '↩️ Back',
+              description: 'Return to main menu',
+            });
+            responsePayload = createListMessage(
+              from,
+              'Select an appointment to cancel or go back:',
+              'Cancel app',
+              rows
+            );
             conversation.currentStep = 'awaiting_cancel_appointment';
           }
         } else {
-          responsePayload = createTextMessage(from, "I didn't understand. Please use the menu.");
+          // Invalid input - regenerate menu instead of just informing user
+          responsePayload = createReplyButtonsMessage(from, "❌ I didn't understand. Please select an option:", [
+            { id: 'schedule_app', title: '📅 Schedule' },
+            { id: 'check_status', title: '🔍 Status' },
+            { id: 'cancel', title: '❌ Cancel' },
+          ]);
+          conversation.currentStep = 'awaiting_choice';
         }
         break;
 
@@ -314,7 +376,30 @@ const handleChatFlow = async ({
             conversation.selectedDoctor = undefined;
           }
         } else {
-          responsePayload = createTextMessage(from, 'Please select a doctor from the list.');
+          // Invalid input - regenerate doctor list instead of just informing user
+          try {
+            const doctors = (await DoctorService.getAll()) as unknown as DoctorRecord[];
+            const doctorRows = doctors.map((doc) => ({
+              id: `doctor_${String(doc._id)}`,
+              title: doc.name.slice(0, 24),
+              description: (doc.specialty || '').slice(0, 72),
+            }));
+
+            responsePayload = createListMessage(
+              from,
+              "❌ Invalid selection. Please select a doctor:",
+              'Choose doctor',
+              doctorRows
+            );
+            conversation.currentStep = 'awaiting_doctor';
+          } catch (err) {
+            console.error('Error regenerating doctor list:', err);
+            responsePayload = createTextMessage(
+              from,
+              '❌ An error occurred. Please try again later.'
+            );
+            conversation.currentStep = 'start';
+          }
         }
         break;
 
@@ -338,7 +423,7 @@ const handleChatFlow = async ({
           let doctorInfo = '';
           if (appointment.availability) {
             const availability = (await AppointmentService.getAvailabilityById(
-              String((appointment.availability as unknown) || '')
+              extractObjectId(appointment.availability)
             )) as unknown as Availability | null;
             if (availability && availability.doctor) {
               const doctor = (await DoctorService.getById(
@@ -364,12 +449,68 @@ const handleChatFlow = async ({
           conversation.currentStep = 'finished';
           conversation.selectedDoctor = undefined;
         } else {
-          responsePayload = createTextMessage(from, 'Please select an appointment from the list.');
+          // Invalid input - regenerate appointment list instead of just informing user
+          try {
+            const doctorId = conversation.selectedDoctor;
+            if (!doctorId) {
+              responsePayload = createTextMessage(
+                from,
+                '❌ No doctor selected. Please start over.'
+              );
+              conversation.currentStep = 'start';
+              break;
+            }
+
+            const freeApps = (await AppointmentService.getAllFreeAppointmentsForDoctor(
+              doctorId
+            )) as unknown as AppointmentRecord[];
+
+            if (freeApps.length === 0) {
+              responsePayload = createTextMessage(
+                from,
+                'There are no available appointments for this doctor.'
+              );
+              conversation.currentStep = 'start';
+              conversation.selectedDoctor = undefined;
+            } else {
+              const rows = freeApps.slice(0, 10).map((app) => ({
+                id: `appointment_${String(app._id)}`,
+                title: new Date(app.date).toLocaleDateString(),
+                description: new Date(app.date).toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }),
+              }));
+              responsePayload = createListMessage(
+                from,
+                "❌ Invalid selection. Please select a slot:",
+                'Choose slot',
+                rows
+              );
+              conversation.currentStep = 'awaiting_appointment';
+            }
+          } catch (err) {
+            console.error('Error regenerating appointment list:', err);
+            responsePayload = createTextMessage(
+              from,
+              '❌ An error occurred. Please try again later.'
+            );
+            conversation.currentStep = 'start';
+            conversation.selectedDoctor = undefined;
+          }
         }
         break;
 
       case 'awaiting_cancel_appointment':
-        if (processedInput.startsWith('cancel_appointment_')) {
+        if (processedInput === 'cancel_exit') {
+          // User wants to go back to main menu
+          responsePayload = createReplyButtonsMessage(from, 'What do you need?', [
+            { id: 'schedule_app', title: '📅 Schedule' },
+            { id: 'check_status', title: '🔍 Status' },
+            { id: 'cancel', title: '❌ Cancel' },
+          ]);
+          conversation.currentStep = 'awaiting_choice';
+        } else if (processedInput.startsWith('cancel_appointment_')) {
           const appId = processedInput.replace('cancel_appointment_', '');
           try {
             const appointment = (await AppointmentService.getById(
@@ -381,19 +522,27 @@ const handleChatFlow = async ({
                 from,
                 'The selected appointment was not found. Please try again.'
               );
-              conversation.currentStep = 'start';
+              conversation.currentStep = 'awaiting_cancel_appointment';
               break;
             }
 
+            // Validate that appointment belongs to this client
+            // Handle both direct client ID and populated client object
+            const appointmentClientId = typeof appointment.client === 'string' 
+              ? appointment.client 
+              : appointment.client?._id 
+              ? String(appointment.client._id)
+              : null;
+              
             if (
-              appointment.client &&
-              String(appointment.client) !== String((client as Client)._id)
+              !appointmentClientId ||
+              appointmentClientId !== String((client as Client)._id)
             ) {
               responsePayload = createTextMessage(
                 from,
                 'The selected appointment is not valid for cancellation. Please select a valid appointment from the list.'
               );
-              conversation.currentStep = 'start';
+              conversation.currentStep = 'awaiting_cancel_appointment';
               break;
             }
 
@@ -405,7 +554,7 @@ const handleChatFlow = async ({
             });
             responsePayload = createTextMessage(
               from,
-              'Your appointment has been cancelled successfully.'
+              '✅ Your appointment has been cancelled successfully.'
             );
             conversation.currentStep = 'finished';
           } catch (err) {
@@ -417,7 +566,63 @@ const handleChatFlow = async ({
             conversation.currentStep = 'start';
           }
         } else {
-          responsePayload = createTextMessage(from, 'Please select an appointment from the list.');
+          // Invalid input - regenerate cancellation list with exit option
+          try {
+            const appointments = (await AppointmentService.getAllConfirmedAppointmentsForClient(
+              String(client._id)
+            )) as unknown as AppointmentRecord[];
+            const now = new Date();
+
+            // Auto-cancel past appointments
+            for (const app of appointments) {
+              if (new Date(app.date) < now) {
+                try {
+                  await AppointmentService.update(String(app._id), {
+                    confirmed: false,
+                    status: 'cancelled',
+                  });
+                } catch (e) {
+                  console.error('Error auto-cancelling past appointment:', e);
+                }
+              }
+            }
+
+            const futureApps = appointments.filter((app) => new Date(app.date) >= now);
+
+            if (futureApps.length === 0) {
+              responsePayload = createTextMessage(
+                from,
+                'You have no upcoming active appointments to cancel.'
+              );
+              conversation.currentStep = 'finished';
+            } else {
+              const rows = futureApps.slice(0, 9).map((app) => ({
+                id: `cancel_appointment_${String(app._id)}`,
+                title: new Date(app.date).toLocaleDateString(),
+                description: 'Click to cancel this appointment',
+              }));
+              // Add exit option
+              rows.push({
+                id: 'cancel_exit',
+                title: '↩️ Back',
+                description: 'Return to main menu',
+              });
+              responsePayload = createListMessage(
+                from,
+                'Select an appointment to cancel or go back:',
+                'Cancel app',
+                rows
+              );
+              conversation.currentStep = 'awaiting_cancel_appointment';
+            }
+          } catch (err) {
+            console.error('Error regenerating cancellation list:', err);
+            responsePayload = createTextMessage(
+              from,
+              '❌ An error occurred. Please try again later.'
+            );
+            conversation.currentStep = 'start';
+          }
         }
         break;
 

@@ -27,7 +27,12 @@ const update = async (id: string, data: AppointmentData) =>
 const remove = async (id: string) => Appointment.findByIdAndDelete(id);
 
 const getNextConfirmedAppointment = async (clientId: string) =>
-  Appointment.findOne({ client: clientId, confirmed: true, status: 'scheduled' })
+  Appointment.findOne({
+    client: clientId,
+    confirmed: true,
+    status: 'scheduled',
+    date: { $gt: new Date() }, // Filtro para obtener solo citas futuras
+  })
     .sort({ date: 1 })
     .populate('client')
     .populate({ path: 'availability', populate: { path: 'doctor' } });

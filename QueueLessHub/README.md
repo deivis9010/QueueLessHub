@@ -60,9 +60,8 @@ El API ahora incluye capas de seguridad avanzadas:
 - `GET /api/auth/csrf-token` - Obtener token CSRF
 
 **Para más detalles**, consulta:
-- [SECURITY_ROADMAP.md](SECURITY_ROADMAP.md) - Detalles técnicos
+- [SECURITY_STATUS.md](SECURITY_STATUS.md) - Estado actual de seguridad y roadmap
 - [SECURITY_IMPLEMENTATION_GUIDE.md](SECURITY_IMPLEMENTATION_GUIDE.md) - Guía de integración cliente
-- [SECURITY_PHASE_1_2_REVIEW.md](SECURITY_PHASE_1_2_REVIEW.md) - Revisión técnica
 
 ## Debug
 Puedes depurar el backend desde VS Code usando la configuración "Debug API Server" en la pestaña Run & Debug (F5).

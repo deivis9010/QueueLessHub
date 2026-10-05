@@ -92,14 +92,7 @@ This guide shows how to use the skills during real development scenarios.
 
 ## Quick Reference
 
-- Architecture / Patterns -> `/coding-standards`
-- Testing / Coverage -> `/testing-requirements`
-- Security / Validation -> `/security-guidelines`
-- API / Endpoints -> `/api-design-rules`
-- Naming / Conventions -> `/naming-conventions`
-- Commands / Development -> `/workflow-commands`
-- Before Commit -> `/pre-commit-checklist`
-- Errors / Exceptions -> `/error-handling`
+See the "When to Use Each Skill" table in [docs/skills/README.md](README.md) for the full skill-to-scenario mapping.
 
 ## Current Stack Note
 

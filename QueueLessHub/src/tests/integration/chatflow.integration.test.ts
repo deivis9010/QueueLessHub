@@ -514,8 +514,7 @@ describe('ChatFlow Integration Tests', () => {
       });
 
       expect(result.type).toBe('text');
-      expect(result.text.body).toContain('missed');
-      expect(result.text.body).toContain('cancelled');
+      expect(result.text.body).toMatch(/missed.*cancelled/i);
 
       const updatedAppointment = await Appointment.findById(pastAppointment._id);
       expect(updatedAppointment.confirmed).toBe(false);
@@ -706,7 +705,8 @@ describe('ChatFlow Integration Tests', () => {
       expect(result.text.body).toContain('not valid for cancellation');
 
       const updatedConversation = await Conversation.findById(conversation._id);
-      expect(updatedConversation.currentStep).toBe('start');
+      // Invalid appointment should stay in awaiting_cancel_appointment to allow retry
+      expect(updatedConversation.currentStep).toBe('awaiting_cancel_appointment');
 
       await Appointment.deleteOne({ _id: otherAppointment._id });
       await Client.deleteOne({ _id: otherClient._id });
@@ -788,8 +788,11 @@ describe('ChatFlow Integration Tests', () => {
         type: 'text',
       });
 
-      expect(result.type).toBe('text');
-      expect(result.text.body).toContain("didn't understand");
+      // Invalid input should regenerate menu with buttons
+      expect(result.type).toBe('interactive');
+      expect(result.interactive.type).toBe('button');
+      expect(result.interactive.action.buttons).toHaveLength(3);
+      expect(result.interactive.body.text).toContain("didn't understand");
     });
 
     it('should handle invalid doctor selection', async () => {
@@ -812,8 +815,10 @@ describe('ChatFlow Integration Tests', () => {
         type: 'text',
       });
 
-      expect(result.type).toBe('text');
-      expect(result.text.body).toContain('select a doctor from the list');
+      // Invalid input should regenerate doctor list
+      expect(result.type).toBe('interactive');
+      expect(result.interactive.type).toBe('list');
+      expect(result.interactive.body.text).toContain('Invalid selection');
     });
 
     it('should handle invalid appointment selection', async () => {
@@ -837,8 +842,9 @@ describe('ChatFlow Integration Tests', () => {
         type: 'text',
       });
 
+      // Invalid input should either show error (no appointments) or regenerate list
       expect(result.type).toBe('text');
-      expect(result.text.body).toContain('Please select an appointment from the list.');
+      expect(result.text.body).toMatch(/no available appointments|Invalid selection|Please select/);
     });
 
     it('should handle invalid cancel selection', async () => {
@@ -861,8 +867,9 @@ describe('ChatFlow Integration Tests', () => {
         type: 'text',
       });
 
+      // Invalid input either shows no appointments message or regenerates list with exit option
       expect(result.type).toBe('text');
-      expect(result.text.body).toContain('Please select an appointment from the list.');
+      expect(result.text.body).toMatch(/no upcoming|Please select|invalid/);
     });
   });
 

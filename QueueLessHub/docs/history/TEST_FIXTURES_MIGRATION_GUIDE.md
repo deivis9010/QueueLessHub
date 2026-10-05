@@ -1,3 +1,7 @@
+> **Archived:** this is a historical, point-in-time migration guide kept for reference. For the
+> current fixtures/factories/helpers reference, see
+> [FIXTURES_GUIDE.md](../../src/tests/FIXTURES_GUIDE.md).
+
 # 🔄 Guía de Migración a Fixtures y Factories
 
 Esta guía te ayudará a migrar tests existentes para usar los nuevos fixtures, factories y helpers.

@@ -19,6 +19,10 @@ Load the most relevant guidance first:
 - `/workflow-commands` -> npm scripts, local run, debug, validation commands
 - `/pre-commit-checklist` -> required checks before asking for review
 - `/error-handling` -> middleware errors, async flow, DB errors, status mapping
+- `/new-endpoint` -> scaffold a new endpoint across route, controller, service, model, and tests
+- `/security-audit-webhook` -> validate webhook/URL-accepting endpoints against SSRF/CSRF/rate-limit rules
+- `/new-test-fixtures` -> add fixtures, factories, and helpers for a model
+- `/document-endpoint` -> add or update the Swagger/OpenAPI block for a route
 
 ## Project Context
 
@@ -41,20 +45,7 @@ Load the most relevant guidance first:
 
 ## Essential Commands
 
-Use the repository scripts first.
-
-```powershell
-npm install
-npm run check
-npm run build
-npm run dev
-npm start
-npm test
-npm run test:coverage
-npm run test:unit
-npm run test:integration
-npm run swagger:generate
-```
+Use the repository scripts first; see [DEVELOPMENT.md](../DEVELOPMENT.md) or load `/workflow-commands` for the full list and when to use each one.
 
 ## Validation Rules
 
@@ -118,9 +109,10 @@ npm run swagger:generate
 - [docs/skills/README.md](../docs/skills/README.md) -> skill index and topic navigation
 - [src/tests/README.md](../src/tests/README.md) -> testing structure and conventions
 - [src/tests/FIXTURES_GUIDE.md](../src/tests/FIXTURES_GUIDE.md) -> fixtures, factories, helpers
-- [src/tests/MIGRATION_GUIDE.md](../src/tests/MIGRATION_GUIDE.md) -> historical test migration notes
+- [docs/history/TEST_FIXTURES_MIGRATION_GUIDE.md](../docs/history/TEST_FIXTURES_MIGRATION_GUIDE.md) -> archived historical test migration notes
 - [RATE_LIMITING.md](../RATE_LIMITING.md) -> rate limiter behavior
 - [SECURITY_CONFIG.md](../SECURITY_CONFIG.md) -> security configuration details
+- [SECURITY_STATUS.md](../SECURITY_STATUS.md) -> current security status and roadmap
 - [VERCEL_DEPLOY.md](../VERCEL_DEPLOY.md) -> deployment notes
 
 ## Notes for the TypeScript Codebase
