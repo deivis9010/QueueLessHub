@@ -25,11 +25,35 @@ export interface InteractivePayload {
   };
 }
 
+/**
+ * Normalized inbound input for the MongoDB chat flow.
+ * `value` is the button/list id for interactive taps, or the trimmed text otherwise.
+ */
 export interface ChatFlowInput {
+  messageId?: string;
   from: string;
-  text: string;
-  type?: string;
-  interactive?: InteractivePayload | null;
+  value: string;
+}
+
+/**
+ * Inbound message as sent by the WhatsApp Cloud API webhook.
+ */
+export interface WhatsAppInboundMessage {
+  id: string;
+  from: string;
+  type: string;
+  text?: { body?: string };
+  interactive?: InteractivePayload;
+  button?: { payload?: string; text?: string };
+}
+
+export interface WhatsAppWebhookBody {
+  object?: string;
+  entry?: Array<{
+    changes?: Array<{
+      value?: { messages?: WhatsAppInboundMessage[] };
+    }>;
+  }>;
 }
 
 export interface WhatsAppTextMessage {
@@ -56,4 +80,28 @@ export interface WhatsAppInteractiveMessage {
   };
 }
 
-export type WhatsAppPayload = WhatsAppTextMessage | WhatsAppInteractiveMessage;
+export interface WhatsAppTemplateMessage {
+  messaging_product: 'whatsapp';
+  recipient_type: 'individual';
+  to: string;
+  type: 'template';
+  template: {
+    name: string;
+    language: { code: string };
+    components: Array<{
+      type: 'body';
+      parameters: Array<{ type: 'text'; text: string }>;
+    }>;
+  };
+}
+
+export type WhatsAppPayload = WhatsAppTextMessage | WhatsAppInteractiveMessage | WhatsAppTemplateMessage;
+
+/**
+ * Reply produced by the chat flow for one inbound message.
+ * `conversationId` lets the outbox close the right conversation if delivery is never successful.
+ */
+export interface ChatFlowReply {
+  conversationId: string;
+  payload: WhatsAppPayload;
+}

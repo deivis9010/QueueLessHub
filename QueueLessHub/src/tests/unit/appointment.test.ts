@@ -873,6 +873,37 @@ describe('Appointment - Complete Test Suite', () => {
           expect(new Date(apt.date).getTime()).toBeGreaterThan(Date.now());
         });
       });
+
+      it('should generate appointments for every doctor when no doctor is given', async () => {
+        const secondDoctor = await Doctor.create({
+          name: 'Dr. Second',
+          specialty: 'Second specialty',
+          phone: '+1111111111',
+          user: userId,
+        });
+        const secondAvailability = await Availability.create({
+          doctor: secondDoctor._id,
+          dayOfWeek: 2,
+          startHour: '09:00',
+          endHour: '12:00',
+          duration: 30,
+          active: true,
+        });
+
+        const result = await AppointmentService.generateAppointmentsFromAvailability(undefined, 1);
+        const availabilityIds = new Set(result.map((apt) => apt.availability.toString()));
+
+        expect(availabilityIds.has(availabilityId)).toBe(true);
+        expect(availabilityIds.has(secondAvailability._id.toString())).toBe(true);
+      });
+
+      it('should not create duplicate appointments when run twice for the same doctor', async () => {
+        const first = await AppointmentService.generateAppointmentsFromAvailability(doctorId, 1);
+        const second = await AppointmentService.generateAppointmentsFromAvailability(doctorId, 1);
+
+        expect(first.length).toBeGreaterThan(0);
+        expect(second.length).toBe(0);
+      });
     });
 
     describe('getAvailabilityById', () => {

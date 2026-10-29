@@ -1,92 +1,120 @@
-import axios from 'axios';
-import type { NextFunction, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+
+import type { ChatFlowInput, WhatsAppInboundMessage, WhatsAppWebhookBody } from '../types/whatsapp.types';
 
 import { handleChatFlow } from '../services/chatflow.service';
+import { enqueueFailedDelivery } from '../services/outbox.service';
+import { sendWhatsAppMessage } from '../services/whatsapp.client';
 
 const getWebhook = (req: Request, res: Response): void => {
   const verifyToken = process.env.WHATSAPP_TOKEN;
-  
+
   // Support both hub.mode and hub_mode (in case of sanitization)
   const mode = req.query['hub.mode'] || req.query['hub_mode'];
-  
+
   // Support both hub.verify_token and hub_verify_token (in case of sanitization)
   const token = req.query['hub.verify_token'] || req.query['hub_verify_token'];
-  
+
   // Support both hub.challenge and hub_challenge (in case of sanitization)
   const challenge = req.query['hub.challenge'] || req.query['hub_challenge'];
 
-  console.log('🔗 Verificando Webhook subscribe', mode, 'token:', token?.toString().slice(0, 20) + '...', 'challenge:', challenge);
-  console.log('Verify token configurado:', verifyToken?.toString().slice(0, 20) + '...');
+  console.log('Webhook subscribe verification request, mode:', mode);
 
   if (mode && token && mode === 'subscribe' && token === verifyToken) {
-    console.log('🟢 Webhook verificado correctamente');
+    console.log('Webhook verified');
     res.status(200).send(String(challenge));
     return;
   }
 
-  console.log('🔴 Webhook no verificado - token no coincide');
+  console.log('Webhook verification failed: token does not match');
   res.sendStatus(403);
 };
 
-const postWebhook = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const body = req.body;
+/**
+ * Collects every inbound message across all entries and changes of the webhook payload.
+ */
+export const extractInboundMessages = (body: WhatsAppWebhookBody): WhatsAppInboundMessage[] => {
+  const messages: WhatsAppInboundMessage[] = [];
 
-    if (
-      body.object === 'whatsapp_business_account' &&
-      body.entry &&
-      body.entry[0] &&
-      body.entry[0].changes &&
-      body.entry[0].changes[0] &&
-      body.entry[0].changes[0].value.messages
-    ) {
-      const message = body.entry[0].changes[0].value.messages[0];
-      const from = message.from;
-      const type = message.type;
+  for (const entry of body.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      messages.push(...(change.value?.messages ?? []));
+    }
+  }
 
-      let text = '';
-      let interactive = null;
+  return messages;
+};
 
-      if (type === 'text') {
-        text = message.text.body;
-      } else if (type === 'interactive') {
-        interactive = message.interactive;
-        text = interactive.button_reply?.id || interactive.list_reply?.id || '';
-      } else {
-        console.log(`Tipo de mensaje no soportado: ${type}`);
-        res.sendStatus(200);
-        return;
+/**
+ * Maps a supported inbound message to flow input. Returns null for unsupported or empty messages.
+ */
+export const toChatFlowInput = (message: WhatsAppInboundMessage): ChatFlowInput | null => {
+  let value: string | undefined;
+
+  switch (message.type) {
+    case 'text':
+      value = message.text?.body?.trim();
+      break;
+    case 'interactive':
+      value = message.interactive?.button_reply?.id ?? message.interactive?.list_reply?.id;
+      break;
+    case 'button':
+      // Quick-reply taps from template messages arrive as type 'button'.
+      value = message.button?.payload;
+      break;
+    default:
+      value = undefined;
+  }
+
+  if (!value) {
+    return null;
+  }
+
+  return { messageId: message.id, from: message.from, value };
+};
+
+const describeError = (error: unknown): string => (error instanceof Error ? error.message : 'Unknown error');
+
+const postWebhook = async (req: Request, res: Response): Promise<void> => {
+  const body = (req.body ?? {}) as WhatsAppWebhookBody;
+
+  if (body.object !== 'whatsapp_business_account') {
+    res.sendStatus(200);
+    return;
+  }
+
+  for (const message of extractInboundMessages(body)) {
+    try {
+      const input = toChatFlowInput(message);
+
+      if (!input) {
+        console.log(`Ignored unsupported or empty message of type: ${message.type}`);
+        continue;
       }
 
-      console.log(`Mensaje recibido de ${from}: ${text} (Tipo: ${type})`);
-      const responsePayload = await handleChatFlow({ from, text, type, interactive });
+      const reply = await handleChatFlow(input);
 
-      await axios.post(
-        `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
-        responsePayload,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
+      if (reply) {
+        try {
+          await sendWhatsAppMessage(reply.payload);
+        } catch (sendError) {
+          // Keep the reply in the outbox so it is retried instead of lost. Still answer 200 below.
+          console.error(`Send failed for message ${message.id}, queued for retry:`, describeError(sendError));
+          await enqueueFailedDelivery({
+            conversationId: reply.conversationId,
+            to: reply.payload.to,
+            payload: reply.payload,
+            error: describeError(sendError),
+          });
         }
-      );
-
-      res.status(200).send('Mensaje procesado y respuesta enviada.');
-      return;
+      }
+    } catch (error) {
+      // Log and continue: WhatsApp retries any non-200 response, which would replay the message.
+      console.error(`Error processing WhatsApp message ${message.id}:`, describeError(error));
     }
-
-    res.status(200).send('Evento de webhook no procesado (no es un mensaje).');
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(
-      'Error al procesar webhook:',
-      (error as { response?: { data?: unknown } })?.response
-        ? (error as { response?: { data?: unknown } }).response?.data
-        : message
-    );
-    next(error);
   }
+
+  res.sendStatus(200);
 };
 
 export default {

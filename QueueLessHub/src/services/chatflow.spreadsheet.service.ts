@@ -156,6 +156,12 @@ const handleChatFlowSpreadsheet = async ({
   }
 
   const state = userStates[from];
+
+  if (state.step !== 'start' && state.step !== 'finished' && text.trim().toLowerCase() === 'cancelar') {
+    delete userStates[from];
+    return { responsePayload: createTextMessage(from, 'Request cancelled. Send any message to start again.') };
+  }
+
   let responsePayload: WhatsAppTextMessage;
 
   switch (state.step) {

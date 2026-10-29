@@ -8,9 +8,15 @@ type ConversationJson = Record<string, unknown> & {
 const conversationSchema = new mongoose.Schema(
   {
     client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
-    state: String,
+    // 'active' | 'closed'. Legacy documents may still hold other values.
+    state: { type: String, default: 'active' },
     currentStep: String,
     selectedDoctor: { type: String, default: null },
+    retryCount: { type: Number, default: 0 },
+    // Incremented on every write; used to detect concurrent updates.
+    version: { type: Number, default: 0 },
+    closedAt: Date,
+    closedReason: String,
     messages: [
       {
         from: { type: String },
@@ -31,5 +37,7 @@ const conversationSchema = new mongoose.Schema(
     },
   }
 );
+
+conversationSchema.index({ client: 1, state: 1, updatedAt: -1 });
 
 export default mongoose.model('Conversation', conversationSchema);

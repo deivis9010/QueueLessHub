@@ -4,11 +4,14 @@ dotenv.config();
 import mongoose from 'mongoose';
 
 import app from './app';
+import { startOutboxWorker } from './services/outbox.service';
 
 async function startServer(): Promise<void> {
   try {
     await mongoose.connect(process.env.MONGODB_URI as string);
     console.log('Conectado a MongoDB Atlas');
+
+    startOutboxWorker();
 
     const port = Number(process.env.PORT) || 3000;
     app.listen(port, () => {

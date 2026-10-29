@@ -85,7 +85,10 @@ routes -> controllers -> services -> models
 
 ### Conversations and Bot Flow
 
-- Conversation state is used to drive WhatsApp interactions.
+- Conversation state is used to drive WhatsApp interactions. Conversations are `active` or `closed`, with a `closedReason`.
+- Inbound messages are deduplicated through `ProcessedMessage`. Version-conditional updates prevent concurrent writes.
+- Undelivered replies are stored in the `OutboundMessage` outbox. A worker started from `server.ts` retries them and closes the conversation with `send_failed` after the last attempt.
+- Business-initiated messages use the templates in `whatsapp.templates.ts`. Sending is not implemented yet.
 - The current code supports webhook simulation and a Google Sheets coordination flow.
 - This area is sensitive to state handling and should be changed carefully.
 

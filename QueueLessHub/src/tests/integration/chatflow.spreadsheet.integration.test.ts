@@ -59,6 +59,30 @@ describe('ChatFlow Spreadsheet Integration Tests', () => {
     // No hay forma directa de limpiar userStates, pero cada test usa un teléfono diferente
   });
 
+  describe('handleChatFlowSpreadsheet - Cancel', () => {
+    it('should cancel the request at the name step and restart on the next message', async () => {
+      const phone = '5219990000001';
+      await handleChatFlowSpreadsheet({ from: phone, text: 'start' });
+
+      const cancelled = await handleChatFlowSpreadsheet({ from: phone, text: ' Cancelar ' });
+      expect(cancelled.collectedData).toBeUndefined();
+      expect(cancelled.responsePayload.text.body).toContain('cancelled');
+
+      const restarted = await handleChatFlowSpreadsheet({ from: phone, text: 'hola' });
+      expect(restarted.responsePayload.text.body).toContain('full name');
+    });
+
+    it('should cancel the request at the insurance step without saving data', async () => {
+      const phone = '5219990000002';
+      await handleChatFlowSpreadsheet({ from: phone, text: 'start' });
+      await handleChatFlowSpreadsheet({ from: phone, text: 'John Doe' });
+
+      const cancelled = await handleChatFlowSpreadsheet({ from: phone, text: 'cancelar' });
+      expect(cancelled.collectedData).toBeUndefined();
+      expect(cancelled.responsePayload.text.body).toContain('cancelled');
+    });
+  });
+
   describe('handleChatFlowSpreadsheet - Start Flow', () => {
     it('should start conversation and ask for name', async () => {
       const result = await handleChatFlowSpreadsheet({

@@ -104,6 +104,14 @@ Before asking for review, confirm the following:
 1. Keep payloads treated as untrusted.
 2. Re-test the webhook path.
 3. Check both MongoDB and Google Sheets flows if the change affects conversation logic.
+4. The webhook always answers 200 after logging. Meta retries any non-200 response, so a failure must never bubble up as a 500.
+5. Duplicate deliveries are ignored through the `ProcessedMessage` collection (unique `wamid`, 7-day TTL).
+6. A conversation closes with a `closedReason` (`completed`, `invalid_input`, `timeout`, `error`, `send_failed`). After it closes, the bot stays silent until the client sends a new message, which starts a new conversation.
+7. Conversations expire after 10 minutes without activity. The expiry is checked on the next inbound message.
+8. Patient-facing texts are in English. Times are shown in the America/Merida time zone.
+9. Replies that fail to send are stored in the `OutboundMessage` collection (outbox). `startOutboxWorker()` in `src/server.ts` retries them every 15 seconds, with 30 s and 2 min delays. After 3 failed attempts the reply is marked `failed` and its conversation closes with `send_failed`. The worker needs a long-running process; it does not run in serverless handlers.
+10. Meta-approved message templates live in `src/services/whatsapp.templates.ts`. Business-initiated messages must use these templates. Sending them from the server is not implemented yet. Submit the `body` text to Meta before using them.
+11. Run the flow tests after changes: `npx jest src/tests/unit/chatflow src/tests/unit/bot.controller.test.ts src/tests/unit/whatsapp.templates.test.ts src/tests/integration/chatflow.integration.test.ts src/tests/integration/outbox.integration.test.ts`.
 
 ## Docs That Matter Most
 

@@ -91,7 +91,7 @@ Este proyecto incluye integración con la API de WhatsApp Business (Meta). Para 
 5. Usa el token y el ID en tu archivo `.env`:
    ```env
    WHATSAPP_TOKEN=TU_TOKEN
-   WHATSAPP_PHONE_ID=TU_ID_TELEFONO
+   PHONE_NUMBER_ID=TU_ID_TELEFONO
    WHATSAPP_WEBHOOK_VERIFY=TU_TOKEN_VERIFICACION
    ```
 6. Puedes enviar mensajes de prueba desde la consola de Meta o desde el backend usando los endpoints del proyecto.
@@ -131,6 +131,8 @@ Para recibir webhooks de WhatsApp en desarrollo, necesitas exponer tu servidor l
 - Los datos se envían a una hoja de cálculo de Google Sheets.
 - El personal del negocio revisa la hoja y coordina las citas manualmente.
 - No se almacena la cita en MongoDB ni se automatiza la asignación.
+- En cualquier paso el cliente puede escribir `cancelar` para terminar la solicitud (no aplica al primer mensaje ni después de enviar los datos).
+
 ## Recomendaciones
 - Usa HTTPS en producción.
 - Mantén tu archivo `.env` fuera del control de versiones.
@@ -231,7 +233,7 @@ This project includes integration with the WhatsApp Business API (Meta). For tes
 5. Use the token and ID in your `.env` file:
    ```env
    WHATSAPP_TOKEN=YOUR_TOKEN
-   WHATSAPP_PHONE_ID=YOUR_PHONE_ID
+   PHONE_NUMBER_ID=YOUR_PHONE_ID
    WHATSAPP_WEBHOOK_VERIFY=YOUR_VERIFY_TOKEN
    ```
 6. You can send test messages from the Meta console or from the backend using the project's endpoints.

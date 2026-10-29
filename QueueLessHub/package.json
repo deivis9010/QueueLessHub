@@ -20,6 +20,7 @@
     "test:e2e": "jest src/tests/e2e",
     "test:url-validation": "ts-node scripts/test-url-validation.ts",
     "test:rate-limit": "ts-node scripts/test-rate-limit.ts",
+    "cleanup:duplicate-appointments": "ts-node scripts/remove-duplicate-appointments.ts",
     "swagger:generate": "ts-node scripts/generate-swagger.ts",
     "lint": "eslint src --ext .ts",
     "lint:strict": "eslint src --ext .ts --max-warnings 0",

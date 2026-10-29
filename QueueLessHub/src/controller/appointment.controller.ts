@@ -95,7 +95,7 @@ const generateAppointmentsFromAvailability = async (
 ): Promise<void> => {
   try {
     const appointments = await AppointmentService.generateAppointmentsFromAvailability(
-      req.body.doctor,
+      req.body.doctor || undefined,
       req.body.weeks
     );
     res.status(201).json(appointments);

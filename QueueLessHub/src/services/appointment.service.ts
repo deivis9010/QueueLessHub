@@ -2,6 +2,7 @@ import type { AppointmentInput } from '../types/appointment.types';
 
 import Appointment from '../models/appointment.model';
 import Availability from '../models/availability.model';
+import Doctor from '../models/doctor.model';
 
 type AppointmentData = AppointmentInput;
 
@@ -46,10 +47,38 @@ const cancelConfirmedAppointment = async (clientId: string) =>
     .populate('client')
     .populate({ path: 'availability', populate: { path: 'doctor' } });
 
-const generateAppointmentsFromAvailability = async (doctorId: string, weeks: number) => {
+/**
+ * Generates free appointment slots from the active availabilities of one doctor, or of every doctor when no doctor is given.
+ * Slots that already exist for the doctor (same start date) are skipped, so running it twice does not duplicate them.
+ */
+const generateAppointmentsFromAvailability = async (doctorId: string | undefined, weeks: number) => {
+  const doctorIds: string[] = doctorId
+    ? [doctorId]
+    : (await Availability.distinct('doctor', { active: true })).map((id) => String(id));
+
+  const created: Array<Awaited<ReturnType<typeof generateForDoctor>>[number]> = [];
+  for (const id of doctorIds) {
+    created.push(...(await generateForDoctor(id, weeks)));
+  }
+  return created;
+};
+
+const getAnyAvailabilityIdsForDoctor = async (doctorId: string) => {
+  const availabilities = await Availability.find({ doctor: doctorId });
+  return availabilities.map((availability) => availability._id);
+};
+
+const generateForDoctor = async (doctorId: string, weeks: number) => {
   const availabilities = await Availability.find({ doctor: doctorId, active: true });
   const appointmentsToCreate = [] as Array<Record<string, unknown>>;
   const now = new Date();
+
+  // Appointments have no doctor field, so existing slots are looked up through every availability of the doctor.
+  const existing = await Appointment.find({
+    availability: { $in: await getAnyAvailabilityIdsForDoctor(doctorId) },
+    date: { $gte: now },
+  }).select('date');
+  const existingTimes = new Set(existing.map((appointment) => new Date(appointment.date).getTime()));
 
   for (const availability of availabilities) {
     const { dayOfWeek, startHour, endHour, duration } = availability as {
@@ -78,15 +107,19 @@ const generateAppointmentsFromAvailability = async (doctorId: string, weeks: num
 
       while (slotStart.getTime() + duration * 60000 <= slotEnd.getTime()) {
         const hour = `${String(slotStart.getHours()).padStart(2, '0')}:${String(slotStart.getMinutes()).padStart(2, '0')}`;
-        appointmentsToCreate.push({
-          doctor: doctorId,
-          date: new Date(slotStart),
-          hour,
-          duration,
-          status: 'available',
-          confirmed: false,
-          availability: availability._id,
-        });
+        const time = slotStart.getTime();
+        if (!existingTimes.has(time)) {
+          existingTimes.add(time);
+          appointmentsToCreate.push({
+            doctor: doctorId,
+            date: new Date(slotStart),
+            hour,
+            duration,
+            status: 'available',
+            confirmed: false,
+            availability: availability._id,
+          });
+        }
 
         slotStart = new Date(slotStart.getTime() + (duration + 10) * 60000);
       }
@@ -162,7 +195,128 @@ const getAllConfirmedAppointmentsForClient = async (clientId: string) =>
     client: clientId,
     confirmed: true,
     status: 'scheduled',
-  }).sort({ date: 1 });
+  })
+    .sort({ date: 1 })
+    .populate({ path: 'availability', populate: { path: 'doctor' } });
+
+/**
+ * Atomically books a free future slot. Returns null if the slot was already taken.
+ */
+const claimFreeAppointment = async (appointmentId: string, clientId: string) =>
+  Appointment.findOneAndUpdate(
+    { _id: appointmentId, free: true, client: null, date: { $gte: new Date() } },
+    { client: clientId, free: false, confirmed: true, status: 'scheduled' },
+    { new: true }
+  ).populate({ path: 'availability', populate: { path: 'doctor' } });
+
+/**
+ * Cancels a future confirmed appointment that belongs to the client and frees the slot.
+ * Returns null if the appointment does not match.
+ */
+const cancelOwnedAppointment = async (appointmentId: string, clientId: string) =>
+  Appointment.findOneAndUpdate(
+    {
+      _id: appointmentId,
+      client: clientId,
+      confirmed: true,
+      status: 'scheduled',
+      date: { $gt: new Date() },
+    },
+    { confirmed: false, status: 'cancelled', free: true, client: null },
+    { new: true }
+  ).populate({ path: 'availability', populate: { path: 'doctor' } });
+
+/**
+ * Marks the client's confirmed appointments in the past as cancelled.
+ * Returns the number of updated appointments.
+ */
+const cancelPastAppointments = async (clientId: string) => {
+  const result = await Appointment.updateMany(
+    {
+      client: clientId,
+      confirmed: true,
+      status: 'scheduled',
+      date: { $lte: new Date() },
+    },
+    { confirmed: false, status: 'cancelled' }
+  );
+  return result.modifiedCount;
+};
+
+export interface DoctorWithFreeSlots {
+  id: string;
+  name: string;
+  specialty?: string;
+  freeSlots: Array<{ id: string; date: Date }>;
+}
+
+interface GroupedFreeSlots {
+  _id: unknown;
+  slots: Array<{ id: unknown; date: Date }>;
+}
+
+/**
+ * Returns every doctor with its free future slots, using one aggregate query instead of one query per doctor.
+ * Doctors without free slots are included with an empty list.
+ */
+const getDoctorsWithFreeSlots = async (): Promise<DoctorWithFreeSlots[]> => {
+  const now = new Date();
+
+  await Appointment.updateMany(
+    { date: { $lt: now }, free: true, client: null },
+    { free: false }
+  );
+
+  const grouped = await Appointment.aggregate<GroupedFreeSlots>([
+    { $match: { client: null, free: true, date: { $gte: now } } },
+    { $sort: { date: 1 } },
+    {
+      $lookup: {
+        from: Availability.collection.name,
+        localField: 'availability',
+        foreignField: '_id',
+        as: 'availability',
+      },
+    },
+    { $unwind: '$availability' },
+    { $match: { 'availability.active': true } },
+    {
+      $group: {
+        _id: '$availability.doctor',
+        slots: { $push: { id: '$_id', date: '$date' } },
+      },
+    },
+  ]);
+
+  const slotsByDoctor = new Map(
+    grouped.map((group) => {
+      const seen = new Set<number>();
+      const slots = group.slots
+        .map((slot) => ({ id: String(slot.id), date: new Date(slot.date) }))
+        .filter((slot) => {
+          const time = slot.date.getTime();
+          if (seen.has(time)) {
+            return false;
+          }
+          seen.add(time);
+          return true;
+        });
+      return [String(group._id), slots] as const;
+    })
+  );
+
+  const doctors = await Doctor.find();
+
+  return doctors.map((doctor) => {
+    const id = String(doctor._id);
+    return {
+      id,
+      name: String(doctor.name),
+      specialty: doctor.specialty ? String(doctor.specialty) : undefined,
+      freeSlots: slotsByDoctor.get(id) ?? [],
+    };
+  });
+};
 
 export default {
   create,
@@ -177,4 +331,8 @@ export default {
   getAllFreeAppointmentsForDoctor,
   getAllConfirmedAppointmentsForClient,
   getAvailabilityById,
+  claimFreeAppointment,
+  cancelOwnedAppointment,
+  cancelPastAppointments,
+  getDoctorsWithFreeSlots,
 };

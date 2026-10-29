@@ -20,10 +20,23 @@ export type ConversationStep =
   | 'awaiting_doctor'
   | 'select_doctor'
   | 'awaiting_appointment'
+  | 'awaiting_cancel_action'
   | 'awaiting_cancel_appointment'
+  | 'awaiting_status_list'
   | 'awaiting_confirmation'
   | 'finished'
   | 'completed';
+
+/**
+ * Conversation lifecycle state. A conversation is 'closed' once the flow ends,
+ * so the bot stays silent until the client sends a new message.
+ */
+export type ConversationState = 'active' | 'closed';
+
+/**
+ * Why a conversation was closed.
+ */
+export type ConversationCloseReason = 'completed' | 'cancelled' | 'invalid_input' | 'timeout' | 'error' | 'send_failed';
 
 /**
  * Conversation document in database
@@ -32,9 +45,13 @@ export interface Conversation extends Document {
   _id: string;
   id?: string;
   client?: string;
-  state?: string;
+  state?: ConversationState;
   currentStep: ConversationStep;
   selectedDoctor?: string | null;
+  retryCount?: number;
+  version?: number;
+  closedAt?: Date;
+  closedReason?: ConversationCloseReason;
   messages: ConversationMessage[];
   createdAt?: Date;
   updatedAt?: Date;
@@ -58,8 +75,11 @@ export interface ConversationResponse {
  */
 export interface ConversationInput {
   client?: string;
-  state?: string;
+  state?: ConversationState;
   currentStep?: ConversationStep;
+  selectedDoctor?: string | null;
+  retryCount?: number;
+  version?: number;
   messages?: ConversationMessage[];
 }
 
