@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "scripts",
+    "outDir": "dist/scripts"
+  },
+  "include": ["scripts/**/*.ts"],
+  "exclude": ["node_modules", "dist", "coverage", "scripts/remove-duplicate-appointments.ts"]
+}

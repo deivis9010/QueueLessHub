@@ -10,7 +10,7 @@ Este proyecto ahora incluye dos flujos principales:
 
 Ambos flujos conviven en el mismo backend y pueden usarse según las necesidades del negocio: automatización total o coordinación manual.
 
-Backend Node.js + Express + MongoDB Atlas
+Backend Node.js + Express + TypeScript + MongoDB Atlas
 
 ## Instalación
 
@@ -34,6 +34,35 @@ Backend Node.js + Express + MongoDB Atlas
    npm start
    ```
 
+## Seguridad (Fase 1-2 Completada ✅)
+
+El API ahora incluye capas de seguridad avanzadas:
+
+### Fase 1: Autenticación HttpOnly JWT
+- Tokens JWT almacenados en cookies httpOnly (previene XSS)
+- Access tokens de corta duración (15 minutos)
+- Refresh tokens con rotación (30 días en BD)
+- Logout revoca tokens inmediatamente
+
+**Endpoints:**
+- `POST /api/auth/register` - Registrar usuario
+- `POST /api/auth/login` - Autenticar usuario
+- `POST /api/auth/refresh` - Renovar access token
+- `POST /api/auth/logout` - Cerrar sesión
+
+### Fase 2: Protección CSRF
+- Token CSRF generado por solicitud
+- Validación double-submit cookie
+- Protección en operaciones state-changing (POST/PUT/DELETE)
+- Webhooks excluidos de validación CSRF
+
+**Endpoints:**
+- `GET /api/auth/csrf-token` - Obtener token CSRF
+
+**Para más detalles**, consulta:
+- [SECURITY_STATUS.md](SECURITY_STATUS.md) - Estado actual de seguridad y roadmap
+- [SECURITY_IMPLEMENTATION_GUIDE.md](SECURITY_IMPLEMENTATION_GUIDE.md) - Guía de integración cliente
+
 ## Debug
 Puedes depurar el backend desde VS Code usando la configuración "Debug API Server" en la pestaña Run & Debug (F5).
 
@@ -48,7 +77,7 @@ Puedes depurar el backend desde VS Code usando la configuración "Debug API Serv
 Si prefieres debug con nodemon, puedes instalarlo globalmente:
 ```powershell
 npm install -g nodemon
-nodemon --inspect src/server.js
+node --inspect --enable-source-maps src/server.ts
 ```
 Luego conecta el debugger de VS Code a la sesión de Node.js.
 ## Integración con WhatsApp Business API
@@ -62,7 +91,7 @@ Este proyecto incluye integración con la API de WhatsApp Business (Meta). Para 
 5. Usa el token y el ID en tu archivo `.env`:
    ```env
    WHATSAPP_TOKEN=TU_TOKEN
-   WHATSAPP_PHONE_ID=TU_ID_TELEFONO
+   PHONE_NUMBER_ID=TU_ID_TELEFONO
    WHATSAPP_WEBHOOK_VERIFY=TU_TOKEN_VERIFICACION
    ```
 6. Puedes enviar mensajes de prueba desde la consola de Meta o desde el backend usando los endpoints del proyecto.
@@ -102,6 +131,8 @@ Para recibir webhooks de WhatsApp en desarrollo, necesitas exponer tu servidor l
 - Los datos se envían a una hoja de cálculo de Google Sheets.
 - El personal del negocio revisa la hoja y coordina las citas manualmente.
 - No se almacena la cita en MongoDB ni se automatiza la asignación.
+- En cualquier paso el cliente puede escribir `cancelar` para terminar la solicitud (no aplica al primer mensaje ni después de enviar los datos).
+
 ## Recomendaciones
 - Usa HTTPS en producción.
 - Mantén tu archivo `.env` fuera del control de versiones.
@@ -132,12 +163,12 @@ Para recibir webhooks de WhatsApp en desarrollo, necesitas exponer tu servidor l
 - `src/services/` — Lógica de acceso a datos y negocio
 - `src/routes/` — Rutas de la API
 - `src/middlewares/` — Middlewares de autenticación, autorización, logs y errores
-- `src/app.js` — Lógica de la aplicación
-- `src/server.js` — Arranque y conexión a MongoDB
+- `src/app.ts` — Lógica de la aplicación
+- `src/server.ts` — Arranque y conexión a MongoDB
 
 #### Archivos relevantes para el flujo Google Sheets
-- `src/services/chatflow.spreadsheet.service.js` — Lógica conversacional y envío de datos a Google Sheets
-- `src/controller/bot.spreadsheet.controller.js` — Webhook para WhatsApp y manejo del flujo de Google Sheets
+- `src/services/chatflow.spreadsheet.service.ts` — Lógica conversacional y envío de datos a Google Sheets
+- `src/controller/bot.spreadsheet.controller.ts` — Webhook para WhatsApp y manejo del flujo de Google Sheets
 - `.env` — Configuración de credenciales y parámetros de la hoja de cálculo
 
 ## Notas
@@ -149,7 +180,7 @@ Para recibir webhooks de WhatsApp en desarrollo, necesitas exponer tu servidor l
 
 # QueueLessHub (English)
 
-Backend Node.js + Express + MongoDB Atlas
+Backend Node.js + Express + TypeScript + MongoDB Atlas
 
 ## Installation
 
@@ -187,7 +218,7 @@ You can debug the backend from VS Code using the "Debug API Server" configuratio
 If you prefer to debug with nodemon, you can install it globally:
 ```powershell
 npm install -g nodemon
-nodemon --inspect src/server.js
+node --inspect --enable-source-maps src/server.ts
 ```
 Then connect the VS Code debugger to the Node.js session.
 
@@ -202,7 +233,7 @@ This project includes integration with the WhatsApp Business API (Meta). For tes
 5. Use the token and ID in your `.env` file:
    ```env
    WHATSAPP_TOKEN=YOUR_TOKEN
-   WHATSAPP_PHONE_ID=YOUR_PHONE_ID
+   PHONE_NUMBER_ID=YOUR_PHONE_ID
    WHATSAPP_WEBHOOK_VERIFY=YOUR_VERIFY_TOKEN
    ```
 6. You can send test messages from the Meta console or from the backend using the project's endpoints.
@@ -268,8 +299,8 @@ To receive WhatsApp webhooks in development, you need to expose your local serve
 - `src/services/` — Data access and business logic
 - `src/routes/` — API routes
 - `src/middlewares/` — Authentication, authorization, logging, and error middlewares
-- `src/app.js` — Application logic
-- `src/server.js` — Startup and MongoDB connection
+- `src/app.ts` — Application logic
+- `src/server.ts` — Startup and MongoDB connection
 
 ## Notes
 - Use nodemon for development.

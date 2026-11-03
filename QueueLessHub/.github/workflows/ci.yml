@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - main
+      - development
+
+jobs:
+  ci:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 📚 Install dependencies
+        run: npm ci
+
+      - name: ✅ TypeScript compilation check
+        run: npm run check
+
+      - name: 🎨 Prettier format check
+        run: npm run format:check
+        if: always()
+
+      - name: 🔍 ESLint linting
+        run: npm run lint
+        if: always()
+
+      - name: 🧪 Run tests
+        run: npm test -- --maxWorkers=2 --coverage
+        if: always()
+
+      - name: 📊 Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: 📝 Comment PR with results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('coverage/coverage-summary.json', 'utf8');
+            const coverage = JSON.parse(summary);
+            const globals = coverage.total;
+            
+            const comment = `## 📊 CI Results
+            
+            ### Coverage
+            - **Statements**: ${globals.statements.pct}%
+            - **Branches**: ${globals.branches.pct}%
+            - **Functions**: ${globals.functions.pct}%
+            - **Lines**: ${globals.lines.pct}%
+            
+            ✅ All checks completed`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

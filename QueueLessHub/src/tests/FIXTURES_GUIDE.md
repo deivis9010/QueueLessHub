@@ -18,7 +18,7 @@ Los **fixtures** son datos estáticos predefinidos que se pueden reutilizar en m
 
 ### Uso de Fixtures
 
-```javascript
+```typescript
 const fixtures = require('../fixtures');
 
 // Usar datos de usuario predefinidos
@@ -69,7 +69,7 @@ Los **factories** generan datos dinámicos con valores únicos, ideales para evi
 
 ### Uso de Factories
 
-```javascript
+```typescript
 const { userFactory, doctorFactory, clientFactory } = require('../factories');
 
 // Generar datos únicos
@@ -123,7 +123,7 @@ Los **helpers** son funciones auxiliares que simplifican tareas comunes en tests
 
 Facilitan la autenticación en tests:
 
-```javascript
+```typescript
 const { authHelpers } = require('../helpers/testHelpers');
 
 // Crear y autenticar usuarios
@@ -141,7 +141,7 @@ const response = await request(app)
 
 Simplifican requests HTTP con autenticación:
 
-```javascript
+```typescript
 const { requestHelpers } = require('../helpers/testHelpers');
 
 // Requests autenticados
@@ -155,7 +155,7 @@ await requestHelpers.authenticatedDelete(`/api/users/${id}`, token);
 
 Crean datos directamente en la base de datos:
 
-```javascript
+```typescript
 const { modelHelpers } = require('../helpers/testHelpers');
 
 // Crear registros directamente
@@ -168,7 +168,7 @@ const availabilityId = await modelHelpers.createAvailability(Availability, avail
 
 Verificaciones comunes de estructura de datos:
 
-```javascript
+```typescript
 const { assertionHelpers } = require('../helpers/testHelpers');
 
 // Verificar estructura de respuestas
@@ -183,7 +183,7 @@ assertionHelpers.expectErrorResponse(response, 400);
 
 Manejo de tiempo en tests:
 
-```javascript
+```typescript
 const { waitHelpers } = require('../helpers/testHelpers');
 
 // Esperar tiempo específico
@@ -196,7 +196,7 @@ const pastDate = waitHelpers.pastDate(7); // 7 días atrás
 
 ## 📝 Ejemplo Completo
 
-```javascript
+```typescript
 const request = require('supertest');
 const app = require('../../app');
 const fixtures = require('../fixtures');
@@ -300,7 +300,7 @@ Para migrar un test existente:
 5. **Simplifica assertions**: Usa assertion helpers para verificaciones comunes
 
 ### Antes:
-```javascript
+```typescript
 beforeEach(async () => {
   const adminResponse = await request(app)
     .post('/api/auth/register')
@@ -322,7 +322,7 @@ beforeEach(async () => {
 ```
 
 ### Después:
-```javascript
+```typescript
 beforeEach(async () => {
   const admin = await authHelpers.createAdmin();
   adminToken = admin.token;
@@ -331,7 +331,7 @@ beforeEach(async () => {
 
 ## 📚 Recursos Adicionales
 
-- Ver `examples/user.refactored.example.js` para un ejemplo completo
+- Ver `examples/user.refactored.example.ts` para un ejemplo completo
 - Todos los fixtures están en `fixtures/`
 - Todas las factories están en `factories/`
 - Todos los helpers están en `helpers/`

@@ -23,7 +23,7 @@ The application implements comprehensive URL validation to protect against Serve
 
 ### Implementation
 
-Located in [urlValidator.js](src/middlewares/urlValidator.js):
+Located in [urlValidator.ts](src/middlewares/urlValidator.ts):
 
 ````javascript
 const { validateWebhookUrl, validateUrlInBody } = require('./middlewares/urlValidator');
@@ -181,8 +181,6 @@ Run the validation test suite:
 
 ````bash
 npm run test:url-validation
-# or
-node scripts/test-url-validation.js
 ````
 
 **Test Coverage:**
@@ -262,7 +260,7 @@ Password validation is applied in:
 
 ### Configuration
 
-Located in [passwordValidator.js](src/middlewares/passwordValidator.js):
+Located in [passwordValidator.ts](src/middlewares/passwordValidator.ts):
 
 ````javascript
 const PASSWORD_REQUIREMENTS = {
