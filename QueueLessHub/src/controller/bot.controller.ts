@@ -16,13 +16,15 @@ const getWebhook = (req: Request, res: Response): void => {
   const token = req.query['hub.verify_token'] || req.query['hub_verify_token'];
 
   // Support both hub.challenge and hub_challenge (in case of sanitization)
-  const challenge = req.query['hub.challenge'] || req.query['hub_challenge'];
+  const rawChallenge = req.query['hub.challenge'] || req.query['hub_challenge'];
+  const challenge = typeof rawChallenge === 'string' ? rawChallenge : '';
+  const isValidChallenge = /^\d+$/.test(challenge);
 
   console.log('Webhook subscribe verification request, mode:', mode);
 
-  if (mode && token && mode === 'subscribe' && token === verifyToken) {
+  if (mode && token && mode === 'subscribe' && token === verifyToken && isValidChallenge) {
     console.log('Webhook verified');
-    res.status(200).type('text/plain').send(String(challenge));
+    res.status(200).type('text/plain').send(challenge);
     return;
   }
 
