@@ -22,7 +22,7 @@ const getWebhook = (req: Request, res: Response): void => {
 
   if (mode && token && mode === 'subscribe' && token === verifyToken) {
     console.log('Webhook verified');
-    res.status(200).send(String(challenge));
+    res.status(200).type('text/plain').send(String(challenge));
     return;
   }
 
@@ -81,7 +81,10 @@ const postWebhook = async (req: Request, res: Response): Promise<void> => {
   const inboundMessages = extractInboundMessages(body);
 
   console.log(
-    `Webhook received: object=${body.object ?? 'none'}, fields=[${fields.join(', ')}], inbound=${inboundMessages.length}`,
+    'Webhook received: object=%s, fields=[%s], inbound=%d',
+    body.object ?? 'none',
+    fields.join(', '),
+    inboundMessages.length,
   );
 
   if (body.object !== 'whatsapp_business_account') {
@@ -92,13 +95,16 @@ const postWebhook = async (req: Request, res: Response): Promise<void> => {
   for (const message of inboundMessages) {
     try {
       console.log(
-        `Inbound message ${message.id} type=${message.type} from=...${String(message.from).slice(-4)}`,
+        'Inbound message %s type=%s from=...%s',
+        message.id,
+        message.type,
+        String(message.from).slice(-4),
       );
 
       const input = toChatFlowInput(message);
 
       if (!input) {
-        console.log(`Ignored unsupported or empty message of type: ${message.type}`);
+        console.log('Ignored unsupported or empty message of type: %s', message.type);
         continue;
       }
 
@@ -109,7 +115,7 @@ const postWebhook = async (req: Request, res: Response): Promise<void> => {
           await sendWhatsAppMessage(reply.payload);
         } catch (sendError) {
           // Keep the reply in the outbox so it is retried instead of lost. Still answer 200 below.
-          console.error(`Send failed for message ${message.id}, queued for retry:`, describeError(sendError));
+          console.error('Send failed for message %s, queued for retry:', message.id, describeError(sendError));
           await enqueueFailedDelivery({
             conversationId: reply.conversationId,
             to: reply.payload.to,
@@ -120,7 +126,7 @@ const postWebhook = async (req: Request, res: Response): Promise<void> => {
       }
     } catch (error) {
       // Log and continue: WhatsApp retries any non-200 response, which would replay the message.
-      console.error(`Error processing WhatsApp message ${message.id}:`, describeError(error));
+      console.error('Error processing WhatsApp message %s:', message.id, describeError(error));
     }
   }
 

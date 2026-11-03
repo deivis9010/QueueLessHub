@@ -86,6 +86,23 @@ app.use(
   })
 );
 
+// Strict CSP for the API; Swagger UI at /api-docs needs inline scripts and styles.
+const apiCsp = helmet.contentSecurityPolicy({
+  directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+});
+const docsCsp = helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", 'data:'],
+    fontSrc: ["'self'", 'data:'],
+  },
+});
+app.use((req: Request, res: Response, next: NextFunction) =>
+  (req.path.startsWith('/api-docs') ? docsCsp : apiCsp)(req, res, next)
+);
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());

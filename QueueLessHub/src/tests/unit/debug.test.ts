@@ -3,8 +3,6 @@ import app from '../../app';
 
 describe('Debug Auth', () => {
   it('debug token creation and verification', async () => {
-    console.log('JWT_SECRET en tests:', process.env.JWT_SECRET);
-
     // Crear usuario
     const registerResponse = await request(app).post('/api/auth/register').send({
       username: 'debuguser',

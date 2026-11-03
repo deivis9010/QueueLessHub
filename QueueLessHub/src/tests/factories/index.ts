@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+
 import type { UserRegisterInput } from '../../types/user.types';
 import type { DoctorInput } from '../../types/doctor.types';
 import type { ClientInput } from '../../types/client.types';
@@ -13,7 +15,7 @@ import type { ConversationInput } from '../../types/conversation.types';
 /**
  * Genera un timestamp único para evitar colisiones en tests paralelos
  */
-const uniqueTimestamp = (): string => Date.now() + Math.random().toString(36).substring(7);
+const uniqueTimestamp = (): string => Date.now() + randomUUID().replace(/-/g, '').slice(0, 12);
 
 /**
  * User Factory

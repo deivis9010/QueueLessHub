@@ -14,7 +14,7 @@ const webhookWith = (...messages: object[]) => ({
 
 describe('Bot Controller', () => {
   let req: { query: Record<string, string>; body: unknown };
-  let res: { status: jest.Mock; send: jest.Mock; sendStatus: jest.Mock; json: jest.Mock };
+  let res: { status: jest.Mock; type: jest.Mock; send: jest.Mock; sendStatus: jest.Mock; json: jest.Mock };
 
   beforeEach(() => {
     req = {
@@ -23,6 +23,7 @@ describe('Bot Controller', () => {
     };
     res = {
       status: jest.fn().mockReturnThis(),
+      type: jest.fn().mockReturnThis(),
       send: jest.fn(),
       sendStatus: jest.fn(),
       json: jest.fn(),
@@ -44,6 +45,7 @@ describe('Bot Controller', () => {
       botController.getWebhook(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.type).toHaveBeenCalledWith('text/plain');
       expect(res.send).toHaveBeenCalledWith('test-challenge');
     });
 
