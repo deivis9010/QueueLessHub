@@ -772,7 +772,7 @@ curl "http://localhost:3000/api/users?email[\$regex]=.*"
 
 ```bash
 # ✅ Good
-JWT_SECRET=gHk8$mP2nQ7wL4xY9zT1vR5cE3dB6aF0
+JWT_SECRET=<generate-a-long-random-value>
 
 # ❌ Bad (hardcoded in code)
 const JWT_SECRET = "mysecret";

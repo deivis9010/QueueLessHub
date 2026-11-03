@@ -8,12 +8,14 @@ const getWebhook = (req: Request, res: Response): void => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
+  const safeChallenge =
+    typeof challenge === 'string' && /^[A-Za-z0-9_-]+$/.test(challenge) ? challenge : null;
 
-  console.log('🔗 Verificando Webhook', mode, token, challenge);
+  console.log('Verificando Webhook, mode:', mode);
 
-  if (mode && token && mode === 'subscribe' && token === verifyToken) {
+  if (mode && token && mode === 'subscribe' && token === verifyToken && safeChallenge !== null) {
     console.log('🟢 Webhook verificado');
-    res.status(200).send(challenge);
+    res.status(200).type('text/plain').send(safeChallenge);
     return;
   }
 

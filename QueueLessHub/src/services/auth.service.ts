@@ -52,7 +52,7 @@ const register = async ({
   role,
   email,
 }: AuthRegisterInput): Promise<Record<string, unknown>> => {
-  if (!username || !password) {
+  if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
     throw new Error('Username y password son requeridos');
   }
 
@@ -81,7 +81,7 @@ const login = async ({
 }: AuthLoginInput): Promise<
   Record<string, unknown> & { accessToken: string; refreshToken: string }
 > => {
-  if (!username || !password) {
+  if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
     throw new Error('Username y password son requeridos');
   }
 

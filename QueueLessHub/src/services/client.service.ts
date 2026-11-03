@@ -10,6 +10,7 @@ const getById = async (id: string) => Client.findById(id);
 const update = async (id: string, data: ClientData) =>
   Client.findByIdAndUpdate(id, data, { new: true });
 const remove = async (id: string) => Client.findByIdAndDelete(id);
-const findByPhone = async (phone: string) => Client.findOne({ phone });
+const findByPhone = async (phone: string) =>
+  typeof phone === 'string' ? Client.findOne({ phone }) : null;
 
 export default { create, getAll, getById, update, remove, findByPhone };

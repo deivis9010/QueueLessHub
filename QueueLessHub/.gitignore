@@ -2,6 +2,14 @@
 node_modules/
 .env
 .env.*
+!.env.example
+
+# Credentials (never commit; use environment variables in deployment)
+google-credentials.json
+!google-credentials.example.json
+*.pem
+*.key
+test-output.txt
 dist/
 build/
 logs/

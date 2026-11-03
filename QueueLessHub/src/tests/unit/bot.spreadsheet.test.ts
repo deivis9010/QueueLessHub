@@ -16,6 +16,7 @@ describe('Bot Spreadsheet Controller', () => {
     };
     res = {
       status: jest.fn().mockReturnThis(),
+      type: jest.fn().mockReturnThis(),
       send: jest.fn(),
       sendStatus: jest.fn(),
       json: jest.fn(),
@@ -39,6 +40,7 @@ describe('Bot Spreadsheet Controller', () => {
       botSpreadsheetController.getWebhook(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.type).toHaveBeenCalledWith('text/plain');
       expect(res.send).toHaveBeenCalledWith('test-challenge');
     });
 
