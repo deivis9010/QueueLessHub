@@ -9,6 +9,7 @@ import Conversation from '../models/conversation.model';
 export interface ConversationAdvance {
   currentStep: string;
   selectedDoctor: string | null;
+  selectedAppointment: string | null;
   retryCount: number;
   state?: ConversationState;
   closedReason?: ConversationCloseReason;

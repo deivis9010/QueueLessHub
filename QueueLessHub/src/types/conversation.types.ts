@@ -23,6 +23,7 @@ export type ConversationStep =
   | 'awaiting_cancel_action'
   | 'awaiting_cancel_appointment'
   | 'awaiting_status_list'
+  | 'awaiting_status_detail'
   | 'awaiting_confirmation'
   | 'finished'
   | 'completed';
@@ -48,6 +49,7 @@ export interface Conversation extends Document {
   state?: ConversationState;
   currentStep: ConversationStep;
   selectedDoctor?: string | null;
+  selectedAppointment?: string | null;
   retryCount?: number;
   version?: number;
   closedAt?: Date;
@@ -78,6 +80,7 @@ export interface ConversationInput {
   state?: ConversationState;
   currentStep?: ConversationStep;
   selectedDoctor?: string | null;
+  selectedAppointment?: string | null;
   retryCount?: number;
   version?: number;
   messages?: ConversationMessage[];

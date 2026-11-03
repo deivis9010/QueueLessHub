@@ -77,14 +77,24 @@ const describeError = (error: unknown): string => (error instanceof Error ? erro
 
 const postWebhook = async (req: Request, res: Response): Promise<void> => {
   const body = (req.body ?? {}) as WhatsAppWebhookBody;
+  const fields = (body.entry ?? []).flatMap((entry) => (entry.changes ?? []).map((change) => change.field));
+  const inboundMessages = extractInboundMessages(body);
+
+  console.log(
+    `Webhook received: object=${body.object ?? 'none'}, fields=[${fields.join(', ')}], inbound=${inboundMessages.length}`,
+  );
 
   if (body.object !== 'whatsapp_business_account') {
     res.sendStatus(200);
     return;
   }
 
-  for (const message of extractInboundMessages(body)) {
+  for (const message of inboundMessages) {
     try {
+      console.log(
+        `Inbound message ${message.id} type=${message.type} from=...${String(message.from).slice(-4)}`,
+      );
+
       const input = toChatFlowInput(message);
 
       if (!input) {

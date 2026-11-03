@@ -51,6 +51,7 @@ export interface WhatsAppWebhookBody {
   object?: string;
   entry?: Array<{
     changes?: Array<{
+      field?: string;
       value?: { messages?: WhatsAppInboundMessage[] };
     }>;
   }>;

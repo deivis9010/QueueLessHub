@@ -2,7 +2,18 @@ import axios from 'axios';
 
 import type { WhatsAppPayload } from '../types/whatsapp.types';
 
-const GRAPH_API_VERSION = 'v19.0';
+const GRAPH_API_VERSION = 'v26.0';
+
+/** Keeps Meta's error code and message, which axios' generic "status code" message drops. */
+const describeGraphError = (error: unknown): string => {
+  if (!axios.isAxiosError(error) || !error.response) {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  const metaError = (error.response.data as { error?: { message?: string; code?: number } } | undefined)?.error;
+  const detail = metaError?.message ? `${metaError.code ?? ''} ${metaError.message}`.trim() : JSON.stringify(error.response.data);
+  return `WhatsApp API ${error.response.status}: ${detail}`;
+};
 
 /**
  * Sends a message through the WhatsApp Cloud API.
@@ -25,7 +36,9 @@ export const sendWhatsAppMessage = async (payload: WhatsAppPayload): Promise<voi
         'Content-Type': 'application/json',
       },
     }
-  );
+  ).catch((error: unknown) => {
+    throw new Error(describeGraphError(error));
+  });
 };
 
 export default { sendWhatsAppMessage };

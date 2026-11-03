@@ -55,7 +55,7 @@ const postWebhook = async (req: Request, res: Response, next: NextFunction): Pro
       const { responsePayload } = await handleChatFlowSpreadsheet({ from, text });
 
       await axios.post(
-        `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
+        `https://graph.facebook.com/v26.0/${process.env.PHONE_NUMBER_ID}/messages`,
         responsePayload,
         {
           headers: {

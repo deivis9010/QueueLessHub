@@ -85,6 +85,7 @@ routes -> controllers -> services -> models
 
 ### Conversations and Bot Flow
 
+- See [docs/CHAT_FLOWS.md](docs/CHAT_FLOWS.md) for the full state-by-state design of the MongoDB chat flow (Agendar, Revisar estado, Cancelar), including button/row IDs and the global navigation rules. Code must match that document.
 - Conversation state is used to drive WhatsApp interactions. Conversations are `active` or `closed`, with a `closedReason`.
 - Inbound messages are deduplicated through `ProcessedMessage`. Version-conditional updates prevent concurrent writes.
 - Undelivered replies are stored in the `OutboundMessage` outbox. A worker started from `server.ts` retries them and closes the conversation with `send_failed` after the last attempt.

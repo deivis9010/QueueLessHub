@@ -19,6 +19,8 @@ export const CONVERSATION_TIMEOUT_MS = 10 * 60 * 1000;
 export const MAX_INVALID_INPUTS = 1;
 
 const MAX_LIST_ROWS = 10;
+// "My appointments" and "Cancel" lists only show the next few upcoming appointments.
+const MAX_UPCOMING_ROWS = 5;
 const ROW_TITLE_MAX = 24;
 const ROW_DESCRIPTION_MAX = 72;
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
@@ -26,25 +28,27 @@ const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
 const DOCTOR_PREFIX = 'doctor_';
 const NO_SLOTS_DOCTOR_PREFIX = 'nodoc_';
 const SLOT_PREFIX = 'appointment_';
+const SLOT_BACK_ID = 'slot_back';
 const CANCEL_PREFIX = 'cancel_';
-const CANCEL_EXIT_ID = 'cancel_exit';
-const CANCEL_ACTION_APPOINTMENT_ID = 'cancel_action_appointment';
-const CANCEL_ACTION_FINISH_ID = 'cancel_action_finish';
-const CANCEL_ACTION_BACK_ID = 'cancel_action_back';
-const STATUS_FINISH_ID = 'status_finish';
+const CANCEL_BACK_ID = 'cancel_back';
 const STATUS_BACK_ID = 'status_back';
 const STATUS_APPOINTMENT_PREFIX = 'status_appt_';
+const STATUS_DETAIL_CANCEL_ID = 'status_detail_cancel';
+const STATUS_DETAIL_BACK_ID = 'status_detail_back';
+// Shared "end the chat" action, available from every step except the doctor list (see flow_cancel below).
+const END_CHAT_ID = 'end_chat';
+// Deliberate naming exception kept from the original flow: this row ends the chat, not an appointment.
 const FLOW_CANCEL_ID = 'flow_cancel';
-const FLOW_CANCEL_KEYWORD = 'cancelar';
 
 const WELCOME_TEXT = 'Hi, welcome to QueueLess. What would you like to do?';
 const INVALID_INPUT_TEXT = 'Sorry, I did not understand that. Please choose one of the options below.';
 const CANCELLED_TEXT = 'Request cancelled. Send any message to start again.';
+const END_CHAT_TEXT = 'Chat finished. Send any message to start again.';
 const SYSTEM_ERROR_TEXT = 'Something went wrong on our side. Please send any message to start again.';
 
 const MAIN_MENU_BUTTONS: WhatsAppButton[] = [
   { id: 'schedule_app', title: 'Schedule' },
-  { id: 'check_status', title: 'My appointment' },
+  { id: 'check_status', title: 'My appointments' },
   { id: 'cancel', title: 'Cancel' },
 ];
 
@@ -53,9 +57,9 @@ export const FLOW_STEPS = [
   'awaiting_choice',
   'awaiting_doctor',
   'awaiting_appointment',
-  'awaiting_cancel_action',
   'awaiting_cancel_appointment',
   'awaiting_status_list',
+  'awaiting_status_detail',
 ] as const;
 
 export type FlowStep = (typeof FLOW_STEPS)[number];
@@ -90,7 +94,6 @@ export interface FlowDeps {
   getFreeSlots(doctorId: string): Promise<SlotOption[]>;
   bookSlot(slotId: string, clientId: string): Promise<AppointmentDetails | null>;
   getUpcomingAppointmentDetails(clientId: string): Promise<UpcomingAppointment[]>;
-  getUpcomingAppointments(clientId: string): Promise<SlotOption[]>;
   cancelAppointment(appointmentId: string, clientId: string): Promise<SlotOption | null>;
   cancelPastAppointments(clientId: string): Promise<number>;
 }
@@ -100,6 +103,7 @@ export interface ConversationSnapshot {
   clientId: string;
   currentStep: FlowStep;
   selectedDoctor: string | null;
+  selectedAppointment: string | null;
   retryCount: number;
   version: number;
   updatedAt?: Date;
@@ -114,6 +118,7 @@ export interface FlowResult {
   payload: WhatsAppPayload | null;
   step: FlowStep;
   selectedDoctor: string | null;
+  selectedAppointment: string | null;
   retryCount: number;
   closeReason?: ConversationCloseReason;
 }
@@ -122,6 +127,7 @@ interface Outcome {
   payload: WhatsAppPayload | null;
   step: FlowStep;
   selectedDoctor: string | null;
+  selectedAppointment: string | null;
   closeReason?: ConversationCloseReason;
   invalid?: boolean;
 }
@@ -175,9 +181,6 @@ const parseId = (value: string, prefix: string): string | null => {
   const id = value.slice(prefix.length);
   return OBJECT_ID_PATTERN.test(id) ? id : null;
 };
-
-const isCancelInput = (value: string): boolean =>
-  value === FLOW_CANCEL_ID || value.trim().toLowerCase() === FLOW_CANCEL_KEYWORD;
 
 const isExpired = (updatedAt?: Date | null): boolean =>
   !!updatedAt && Date.now() - new Date(updatedAt).getTime() > CONVERSATION_TIMEOUT_MS;
@@ -235,6 +238,7 @@ const toResult = (outcome: Outcome, retryCount: number): FlowResult => ({
   payload: outcome.payload,
   step: outcome.step,
   selectedDoctor: outcome.selectedDoctor,
+  selectedAppointment: outcome.selectedAppointment,
   retryCount,
   closeReason: outcome.closeReason,
 });
@@ -243,12 +247,14 @@ const menu = (ctx: Context, text: string): Outcome => ({
   payload: createReplyButtonsMessage(ctx.to, text, MAIN_MENU_BUTTONS),
   step: 'awaiting_choice',
   selectedDoctor: null,
+  selectedAppointment: null,
 });
 
 const closeWith = (ctx: Context, text: string, reason: ConversationCloseReason): Outcome => ({
   payload: createTextMessage(ctx.to, text),
   step: 'start',
   selectedDoctor: null,
+  selectedAppointment: null,
   closeReason: reason,
 });
 
@@ -256,6 +262,7 @@ const invalid = (): Outcome => ({
   payload: null,
   step: 'start',
   selectedDoctor: null,
+  selectedAppointment: null,
   invalid: true,
 });
 
@@ -263,6 +270,12 @@ const cancelRow = (): WhatsAppRow => ({
   id: FLOW_CANCEL_ID,
   title: 'Cancel',
   description: 'End this request',
+});
+
+const endChatRow = (): WhatsAppRow => ({
+  id: END_CHAT_ID,
+  title: 'End chat',
+  description: 'Finish the conversation',
 });
 
 const doctorRow = (doctor: DoctorOption): WhatsAppRow => {
@@ -277,7 +290,10 @@ const doctorRow = (doctor: DoctorOption): WhatsAppRow => {
   return {
     id: `${DOCTOR_PREFIX}${doctor.id}`,
     title: truncate(doctor.name, ROW_TITLE_MAX),
-    description: truncate(`${label} - ${doctor.freeSlotCount} open slots`, ROW_DESCRIPTION_MAX),
+    description: truncate(
+      `${label} - ${doctor.freeSlotCount} open ${doctor.freeSlotCount === 1 ? 'slot' : 'slots'}`,
+      ROW_DESCRIPTION_MAX
+    ),
   };
 };
 
@@ -297,6 +313,7 @@ const showDoctors = async (ctx: Context, text: string): Promise<Outcome> => {
     payload: createListMessage(ctx.to, text, 'Doctors', rows),
     step: 'awaiting_doctor',
     selectedDoctor: null,
+    selectedAppointment: null,
   };
 };
 
@@ -305,84 +322,96 @@ const showSlots = async (ctx: Context, doctorId: string | null, text: string): P
     return showDoctors(ctx, text);
   }
 
-  const slots = (await ctx.deps.getFreeSlots(doctorId)).slice(0, MAX_LIST_ROWS);
+  // Two rows are reserved for the back and end chat options.
+  const slots = (await ctx.deps.getFreeSlots(doctorId)).slice(0, MAX_LIST_ROWS - 2);
 
   if (slots.length === 0) {
     return showDoctors(ctx, 'This doctor has no open time slots. Please choose another doctor:');
   }
 
-  // One row is reserved for the cancel option.
+  const doctor = (await ctx.deps.getDoctorsWithAvailability()).find((item) => item.id === doctorId);
+  const slotDescription = doctor
+    ? truncate(describeDoctor(doctor.name, doctor.specialty), ROW_DESCRIPTION_MAX)
+    : 'Open slot';
+
   const rows: WhatsAppRow[] = [
-    ...slots.slice(0, MAX_LIST_ROWS - 1).map((slot) => ({
+    ...slots.map((slot) => ({
       id: `${SLOT_PREFIX}${slot.id}`,
       title: formatSlotTitle(slot.date),
-      description: 'Open slot',
+      description: slotDescription,
     })),
-    cancelRow(),
+    { id: SLOT_BACK_ID, title: 'Back', description: 'Return to the doctor list' },
+    endChatRow(),
   ];
 
   return {
     payload: createListMessage(ctx.to, text, 'Time slots', rows),
     step: 'awaiting_appointment',
     selectedDoctor: doctorId,
+    selectedAppointment: null,
   };
 };
 
 const showCancelList = async (ctx: Context, text: string): Promise<Outcome> => {
-  const appointments = await ctx.deps.getUpcomingAppointments(ctx.clientId);
+  const appointments = (await ctx.deps.getUpcomingAppointmentDetails(ctx.clientId)).slice(0, MAX_UPCOMING_ROWS);
 
   if (appointments.length === 0) {
-    return closeWith(ctx, 'You have no upcoming appointments to cancel.', 'completed');
+    return menu(ctx, 'You have no upcoming appointments to cancel.\n\nWhat would you like to do?');
   }
 
-  // One row is reserved for the back option.
-  const rows: WhatsAppRow[] = appointments.slice(0, MAX_LIST_ROWS - 1).map((appointment) => ({
-    id: `${CANCEL_PREFIX}${appointment.id}`,
-    title: formatSlotTitle(appointment.date),
-    description: 'Tap to cancel this appointment',
-  }));
-  rows.push({ id: CANCEL_EXIT_ID, title: 'Back', description: 'Return to the main menu' });
+  const rows: WhatsAppRow[] = [
+    ...appointments.map((appointment) => ({
+      id: `${CANCEL_PREFIX}${appointment.id}`,
+      title: formatSlotTitle(appointment.date),
+      description: truncate(describeDoctor(appointment.doctorName, appointment.specialty), ROW_DESCRIPTION_MAX),
+    })),
+    { id: CANCEL_BACK_ID, title: 'Back', description: 'Return to the main menu' },
+    endChatRow(),
+  ];
 
   return {
     payload: createListMessage(ctx.to, text, 'Appointments', rows),
     step: 'awaiting_cancel_appointment',
     selectedDoctor: null,
+    selectedAppointment: null,
   };
 };
 
-const STATUS_MENU_BUTTONS: WhatsAppButton[] = [
-  { id: 'schedule_app', title: 'Schedule' },
-  { id: 'cancel', title: 'Cancel' },
-  { id: STATUS_FINISH_ID, title: 'End chat' },
-];
-
-const statusMenu = (ctx: Context, text: string): Outcome => ({
-  payload: createReplyButtonsMessage(ctx.to, text, STATUS_MENU_BUTTONS),
-  step: 'awaiting_choice',
-  selectedDoctor: null,
-});
-
 const showStatusList = async (ctx: Context, text: string): Promise<Outcome> => {
-  const appointments = await ctx.deps.getUpcomingAppointmentDetails(ctx.clientId);
+  const appointments = (await ctx.deps.getUpcomingAppointmentDetails(ctx.clientId)).slice(0, MAX_UPCOMING_ROWS);
 
   if (appointments.length === 0) {
-    return statusMenu(ctx, 'You have no upcoming appointments.\n\nWhat would you like to do?');
+    return menu(ctx, 'You have no upcoming appointments.\n\nWhat would you like to do?');
   }
 
-  // One row is reserved for the back option.
-  const rows: WhatsAppRow[] = appointments.slice(0, MAX_LIST_ROWS - 1).map((appointment) => ({
-    id: `${STATUS_APPOINTMENT_PREFIX}${appointment.id}`,
-    title: formatSlotTitle(appointment.date),
-    description: truncate(describeDoctor(appointment.doctorName, appointment.specialty), ROW_DESCRIPTION_MAX),
-  }));
-  rows.push({ id: STATUS_BACK_ID, title: 'Back', description: 'Return to the main menu' });
+  const rows: WhatsAppRow[] = [
+    ...appointments.map((appointment) => ({
+      id: `${STATUS_APPOINTMENT_PREFIX}${appointment.id}`,
+      title: formatSlotTitle(appointment.date),
+      description: truncate(describeDoctor(appointment.doctorName, appointment.specialty), ROW_DESCRIPTION_MAX),
+    })),
+    { id: STATUS_BACK_ID, title: 'Back', description: 'Return to the main menu' },
+    endChatRow(),
+  ];
 
   return {
     payload: createListMessage(ctx.to, text, 'Appointments', rows),
     step: 'awaiting_status_list',
     selectedDoctor: null,
+    selectedAppointment: null,
   };
 };
+
+const showStatusDetail = (ctx: Context, appointmentId: string, text: string): Outcome => ({
+  payload: createReplyButtonsMessage(ctx.to, text, [
+    { id: STATUS_DETAIL_CANCEL_ID, title: 'Cancel appointment' },
+    { id: STATUS_DETAIL_BACK_ID, title: 'Back' },
+    { id: END_CHAT_ID, title: 'End chat' },
+  ]),
+  step: 'awaiting_status_detail',
+  selectedDoctor: null,
+  selectedAppointment: appointmentId,
+});
 
 const checkStatus = async (ctx: Context): Promise<Outcome> => {
   await ctx.deps.cancelPastAppointments(ctx.clientId);
@@ -405,9 +434,35 @@ const chooseStatusItem = async (value: string, ctx: Context): Promise<Outcome> =
     return showStatusList(ctx, 'That appointment is no longer available. Here are your upcoming appointments:');
   }
 
-  return statusMenu(
+  return showStatusDetail(
     ctx,
+    appointmentId,
     `Your appointment is on ${formatAppointmentDate(selected.date)} with ${describeDoctor(selected.doctorName, selected.specialty)}.\n\nWhat would you like to do?`
+  );
+};
+
+const chooseStatusDetail = async (
+  value: string,
+  appointmentId: string | null,
+  ctx: Context
+): Promise<Outcome> => {
+  if (value === STATUS_DETAIL_BACK_ID) {
+    return showStatusList(ctx, 'These are your upcoming appointments:');
+  }
+
+  if (value !== STATUS_DETAIL_CANCEL_ID || !appointmentId) {
+    return invalid();
+  }
+
+  const cancelled = await ctx.deps.cancelAppointment(appointmentId, ctx.clientId);
+  if (!cancelled) {
+    return showStatusList(ctx, 'That appointment is no longer available. Here are your upcoming appointments:');
+  }
+
+  return closeWith(
+    ctx,
+    `Your appointment on ${formatAppointmentDate(cancelled.date)} has been cancelled.`,
+    'completed'
   );
 };
 
@@ -419,32 +474,7 @@ const chooseMenuOption = async (value: string, ctx: Context): Promise<Outcome> =
       return checkStatus(ctx);
     case 'cancel':
       await ctx.deps.cancelPastAppointments(ctx.clientId);
-      return showCancelActions(ctx, 'What would you like to do?');
-    case STATUS_FINISH_ID:
-      return closeWith(ctx, 'Chat finished. Send any message to start again.', 'completed');
-    default:
-      return invalid();
-  }
-};
-
-const showCancelActions = (ctx: Context, text: string): Outcome => ({
-  payload: createReplyButtonsMessage(ctx.to, text, [
-    { id: CANCEL_ACTION_APPOINTMENT_ID, title: 'Cancel appointment' },
-    { id: CANCEL_ACTION_FINISH_ID, title: 'End chat' },
-    { id: CANCEL_ACTION_BACK_ID, title: 'Back' },
-  ]),
-  step: 'awaiting_cancel_action',
-  selectedDoctor: null,
-});
-
-const chooseCancelAction = async (value: string, ctx: Context): Promise<Outcome> => {
-  switch (value) {
-    case CANCEL_ACTION_APPOINTMENT_ID:
       return showCancelList(ctx, 'Which appointment would you like to cancel?');
-    case CANCEL_ACTION_FINISH_ID:
-      return closeWith(ctx, 'Chat finished. Send any message to start again.', 'completed');
-    case CANCEL_ACTION_BACK_ID:
-      return menu(ctx, 'What would you like to do?');
     default:
       return invalid();
   }
@@ -463,6 +493,10 @@ const chooseDoctor = async (value: string, ctx: Context): Promise<Outcome> => {
 };
 
 const chooseSlot = async (value: string, selectedDoctor: string | null, ctx: Context): Promise<Outcome> => {
+  if (value === SLOT_BACK_ID) {
+    return showDoctors(ctx, 'Please choose a doctor:');
+  }
+
   const slotId = parseId(value, SLOT_PREFIX);
   if (!slotId) {
     return invalid();
@@ -482,7 +516,7 @@ const chooseSlot = async (value: string, selectedDoctor: string | null, ctx: Con
 };
 
 const chooseAppointmentToCancel = async (value: string, ctx: Context): Promise<Outcome> => {
-  if (value === CANCEL_EXIT_ID) {
+  if (value === CANCEL_BACK_ID) {
     return menu(ctx, 'What would you like to do?');
   }
 
@@ -512,12 +546,12 @@ const transition = async (snapshot: ConversationSnapshot, value: string, ctx: Co
       return chooseDoctor(value, ctx);
     case 'awaiting_appointment':
       return chooseSlot(value, snapshot.selectedDoctor, ctx);
-    case 'awaiting_cancel_action':
-      return chooseCancelAction(value, ctx);
     case 'awaiting_cancel_appointment':
       return chooseAppointmentToCancel(value, ctx);
     case 'awaiting_status_list':
       return chooseStatusItem(value, ctx);
+    case 'awaiting_status_detail':
+      return chooseStatusDetail(value, snapshot.selectedAppointment, ctx);
     default:
       return invalid();
   }
@@ -533,12 +567,14 @@ const promptFor = async (
       return showDoctors(ctx, text);
     case 'awaiting_appointment':
       return showSlots(ctx, snapshot.selectedDoctor, text);
-    case 'awaiting_cancel_action':
-      return showCancelActions(ctx, text);
     case 'awaiting_cancel_appointment':
       return showCancelList(ctx, text);
     case 'awaiting_status_list':
       return showStatusList(ctx, text);
+    case 'awaiting_status_detail':
+      return snapshot.selectedAppointment
+        ? showStatusDetail(ctx, snapshot.selectedAppointment, text)
+        : menu(ctx, text);
     default:
       return menu(ctx, text);
   }
@@ -559,8 +595,12 @@ export const nextStep = async (
     return toResult(menu(ctx, WELCOME_TEXT), 0);
   }
 
-  if (isCancelInput(input.value)) {
+  // Global exit shortcuts: end the conversation from any step, no confirmation needed.
+  if (input.value === FLOW_CANCEL_ID) {
     return toResult(closeWith(ctx, CANCELLED_TEXT, 'cancelled'), 0);
+  }
+  if (input.value === END_CHAT_ID) {
+    return toResult(closeWith(ctx, END_CHAT_TEXT, 'completed'), 0);
   }
 
   const outcome = await transition(snapshot, input.value, ctx);
@@ -573,6 +613,7 @@ export const nextStep = async (
       payload: null,
       step: 'start',
       selectedDoctor: null,
+      selectedAppointment: null,
       retryCount: 0,
       closeReason: 'invalid_input',
     };
@@ -600,6 +641,7 @@ const toSnapshot = (doc: unknown, clientId: string): ConversationSnapshot => {
     _id: unknown;
     currentStep?: unknown;
     selectedDoctor?: string | null;
+    selectedAppointment?: string | null;
     retryCount?: number;
     version?: number;
     updatedAt?: Date;
@@ -610,6 +652,7 @@ const toSnapshot = (doc: unknown, clientId: string): ConversationSnapshot => {
     clientId,
     currentStep: toStep(record.currentStep),
     selectedDoctor: record.selectedDoctor ?? null,
+    selectedAppointment: record.selectedAppointment ?? null,
     retryCount: record.retryCount ?? 0,
     version: record.version ?? 0,
     updatedAt: record.updatedAt,
@@ -672,14 +715,6 @@ const flowDeps: FlowDeps = {
     }));
   },
 
-  getUpcomingAppointments: async (clientId) => {
-    const appointments: AppointmentRecord[] = await AppointmentService.getAllConfirmedAppointmentsForClient(clientId);
-    return appointments.map((appointment) => ({
-      id: String(appointment._id),
-      date: new Date(appointment.date),
-    }));
-  },
-
   cancelAppointment: async (appointmentId, clientId) => {
     const cancelled = await AppointmentService.cancelOwnedAppointment(appointmentId, clientId);
     if (!cancelled) {
@@ -735,6 +770,7 @@ export const handleChatFlow = async ({ messageId, from, value }: ChatFlowInput):
       state: 'active',
       currentStep: 'start',
       selectedDoctor: null,
+      selectedAppointment: null,
       retryCount: 0,
       version: 0,
       messages: [],
@@ -757,6 +793,7 @@ export const handleChatFlow = async ({ messageId, from, value }: ChatFlowInput):
     const update: ConversationAdvance = {
       currentStep: result.step,
       selectedDoctor: result.selectedDoctor,
+      selectedAppointment: result.selectedAppointment,
       retryCount: result.retryCount,
       messages,
       ...closing,

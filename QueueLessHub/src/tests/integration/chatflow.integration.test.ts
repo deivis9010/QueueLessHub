@@ -207,20 +207,20 @@ describe('ChatFlow Integration Tests', () => {
     await send(phone, 'hola');
     const list = await send(phone, 'check_status');
 
-    expect(rowIdsOf(list)).toEqual([`status_appt_${appointment._id}`, 'status_back']);
+    expect(rowIdsOf(list)).toEqual([`status_appt_${appointment._id}`, 'status_back', 'end_chat']);
     expect((list as ListPayload).interactive.action.sections[0].rows[0]).toMatchObject({
       description: expect.stringContaining(doctor.name),
     });
   });
 
-  it('should end the chat from the cancel choice and restart on the next message', async () => {
+  it('should go straight to the cancel list and end the chat, restarting on the next message', async () => {
     const phone = '+test1000000009';
 
     await send(phone, 'hola');
     const choice = await send(phone, 'cancel');
-    expect(bodyOf(choice)).toContain('What would you like to do?');
+    expect(bodyOf(choice)).toContain('no upcoming appointments to cancel');
 
-    const finished = await send(phone, 'cancel_action_finish');
+    const finished = await send(phone, 'end_chat');
     expect(bodyOf(finished)).toContain('Chat finished');
 
     const restarted = await send(phone, 'hola');

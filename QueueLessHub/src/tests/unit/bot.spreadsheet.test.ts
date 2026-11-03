@@ -108,7 +108,7 @@ describe('Bot Spreadsheet Controller', () => {
       });
 
       expect(axios.post).toHaveBeenCalledWith(
-        'https://graph.facebook.com/v19.0/123456789/messages',
+        'https://graph.facebook.com/v26.0/123456789/messages',
         mockResponse.responsePayload,
         {
           headers: {

@@ -12,6 +12,7 @@ const conversationSchema = new mongoose.Schema(
     state: { type: String, default: 'active' },
     currentStep: String,
     selectedDoctor: { type: String, default: null },
+    selectedAppointment: { type: String, default: null },
     retryCount: { type: Number, default: 0 },
     // Incremented on every write; used to detect concurrent updates.
     version: { type: Number, default: 0 },
