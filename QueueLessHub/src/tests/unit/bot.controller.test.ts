@@ -39,14 +39,14 @@ describe('Bot Controller', () => {
       req.query = {
         'hub.mode': 'subscribe',
         'hub.verify_token': 'test-token',
-        'hub.challenge': 'test-challenge',
+        'hub.challenge': '1158201444',
       };
 
       botController.getWebhook(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.type).toHaveBeenCalledWith('text/plain');
-      expect(res.send).toHaveBeenCalledWith('test-challenge');
+      expect(res.send).toHaveBeenCalledWith('1158201444');
     });
 
     it('should reject webhook with incorrect token', () => {

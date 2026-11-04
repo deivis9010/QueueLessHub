@@ -137,6 +137,10 @@ const refreshAccessToken = async (
     throw new Error('Token inválido');
   }
 
+  if (typeof decoded.id !== 'string') {
+    throw new Error('Token inválido');
+  }
+
   const user = await User.findById(decoded.id);
   if (!user) {
     throw new Error('Usuario no encontrado');

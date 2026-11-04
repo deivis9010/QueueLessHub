@@ -3,11 +3,16 @@ import type { AppointmentInput } from '../types/appointment.types';
 import Appointment from '../models/appointment.model';
 import Availability from '../models/availability.model';
 import Doctor from '../models/doctor.model';
+import { stripOperatorKeys } from '../utils/queryGuards';
 
 type AppointmentData = AppointmentInput;
 
+const assertId = (value: unknown): void => {
+  if (typeof value !== 'string') throw new Error('ID inválido');
+};
+
 const create = async (data: AppointmentData) => {
-  const doc = await Appointment.create(data);
+  const doc = await Appointment.create(stripOperatorKeys(data));
   return Appointment.findById(doc._id)
     .populate('client')
     .populate({ path: 'availability', populate: { path: 'doctor' } });
@@ -17,18 +22,26 @@ const getAll = async () =>
   Appointment.find()
     .populate('client')
     .populate({ path: 'availability', populate: { path: 'doctor' } });
-const getById = async (id: string) =>
-  Appointment.findById(id)
+const getById = async (id: string) => {
+  assertId(id);
+  return Appointment.findById(id)
     .populate('client')
     .populate({ path: 'availability', populate: { path: 'doctor' } });
-const update = async (id: string, data: AppointmentData) =>
-  Appointment.findByIdAndUpdate(id, data, { new: true })
+};
+const update = async (id: string, data: AppointmentData) => {
+  assertId(id);
+  return Appointment.findByIdAndUpdate(id, stripOperatorKeys(data), { new: true })
     .populate('client')
     .populate({ path: 'availability', populate: { path: 'doctor' } });
-const remove = async (id: string) => Appointment.findByIdAndDelete(id);
+};
+const remove = async (id: string) => {
+  assertId(id);
+  return Appointment.findByIdAndDelete(id);
+};
 
-const getNextConfirmedAppointment = async (clientId: string) =>
-  Appointment.findOne({
+const getNextConfirmedAppointment = async (clientId: string) => {
+  assertId(clientId);
+  return Appointment.findOne({
     client: clientId,
     confirmed: true,
     status: 'scheduled',
@@ -37,21 +50,25 @@ const getNextConfirmedAppointment = async (clientId: string) =>
     .sort({ date: 1 })
     .populate('client')
     .populate({ path: 'availability', populate: { path: 'doctor' } });
+};
 
-const cancelConfirmedAppointment = async (clientId: string) =>
-  Appointment.findOneAndUpdate(
+const cancelConfirmedAppointment = async (clientId: string) => {
+  assertId(clientId);
+  return Appointment.findOneAndUpdate(
     { client: clientId, confirmed: true, status: 'scheduled' },
     { confirmed: false, status: 'cancelled' },
     { sort: { date: 1 }, new: true }
   )
     .populate('client')
     .populate({ path: 'availability', populate: { path: 'doctor' } });
+};
 
 /**
  * Generates free appointment slots from the active availabilities of one doctor, or of every doctor when no doctor is given.
  * Slots that already exist for the doctor (same start date) are skipped, so running it twice does not duplicate them.
  */
 const generateAppointmentsFromAvailability = async (doctorId: string | undefined, weeks: number) => {
+  if (doctorId !== undefined) assertId(doctorId);
   const doctorIds: string[] = doctorId
     ? [doctorId]
     : (await Availability.distinct('doctor', { active: true })).map((id) => String(id));
@@ -64,11 +81,13 @@ const generateAppointmentsFromAvailability = async (doctorId: string | undefined
 };
 
 const getAnyAvailabilityIdsForDoctor = async (doctorId: string) => {
+  assertId(doctorId);
   const availabilities = await Availability.find({ doctor: doctorId });
   return availabilities.map((availability) => availability._id);
 };
 
 const generateForDoctor = async (doctorId: string, weeks: number) => {
+  assertId(doctorId);
   const availabilities = await Availability.find({ doctor: doctorId, active: true });
   const appointmentsToCreate = [] as Array<Record<string, unknown>>;
   const now = new Date();
@@ -133,9 +152,13 @@ const generateForDoctor = async (doctorId: string, weeks: number) => {
   return Appointment.insertMany(appointmentsToCreate);
 };
 
-const getAvailabilityById = async (availabilityId: string) => Availability.findById(availabilityId);
+const getAvailabilityById = async (availabilityId: string) => {
+  assertId(availabilityId);
+  return Availability.findById(availabilityId);
+};
 
 const getAvailabilityIdsForDoctor = async (doctorId: string) => {
+  assertId(doctorId);
   const availabilities = await Availability.find({ doctor: doctorId, active: true });
   if (!availabilities || availabilities.length === 0) {
     return [];
@@ -145,6 +168,7 @@ const getAvailabilityIdsForDoctor = async (doctorId: string) => {
 };
 
 const getFreeAppointmentsForDoctorAndDate = async (doctorId: string, date: string | Date) => {
+  assertId(doctorId);
   const start = new Date(date);
   start.setHours(0, 0, 0, 0);
   const end = new Date(date);
@@ -170,6 +194,7 @@ const getFreeAppointmentsForDoctorAndDate = async (doctorId: string, date: strin
 };
 
 const getAllFreeAppointmentsForDoctor = async (doctorId: string) => {
+  assertId(doctorId);
   const now = new Date();
 
   await Appointment.updateMany(
@@ -190,31 +215,38 @@ const getAllFreeAppointmentsForDoctor = async (doctorId: string) => {
   }).sort({ date: 1 });
 };
 
-const getAllConfirmedAppointmentsForClient = async (clientId: string) =>
-  Appointment.find({
+const getAllConfirmedAppointmentsForClient = async (clientId: string) => {
+  assertId(clientId);
+  return Appointment.find({
     client: clientId,
     confirmed: true,
     status: 'scheduled',
   })
     .sort({ date: 1 })
     .populate({ path: 'availability', populate: { path: 'doctor' } });
+};
 
 /**
  * Atomically books a free future slot. Returns null if the slot was already taken.
  */
-const claimFreeAppointment = async (appointmentId: string, clientId: string) =>
-  Appointment.findOneAndUpdate(
+const claimFreeAppointment = async (appointmentId: string, clientId: string) => {
+  assertId(appointmentId);
+  assertId(clientId);
+  return Appointment.findOneAndUpdate(
     { _id: appointmentId, free: true, client: null, date: { $gte: new Date() } },
     { client: clientId, free: false, confirmed: true, status: 'scheduled' },
     { new: true }
   ).populate({ path: 'availability', populate: { path: 'doctor' } });
+};
 
 /**
  * Cancels a future confirmed appointment that belongs to the client and frees the slot.
  * Returns null if the appointment does not match.
  */
-const cancelOwnedAppointment = async (appointmentId: string, clientId: string) =>
-  Appointment.findOneAndUpdate(
+const cancelOwnedAppointment = async (appointmentId: string, clientId: string) => {
+  assertId(appointmentId);
+  assertId(clientId);
+  return Appointment.findOneAndUpdate(
     {
       _id: appointmentId,
       client: clientId,
@@ -225,12 +257,14 @@ const cancelOwnedAppointment = async (appointmentId: string, clientId: string) =
     { confirmed: false, status: 'cancelled', free: true, client: null },
     { new: true }
   ).populate({ path: 'availability', populate: { path: 'doctor' } });
+};
 
 /**
  * Marks the client's confirmed appointments in the past as cancelled.
  * Returns the number of updated appointments.
  */
 const cancelPastAppointments = async (clientId: string) => {
+  assertId(clientId);
   const result = await Appointment.updateMany(
     {
       client: clientId,
