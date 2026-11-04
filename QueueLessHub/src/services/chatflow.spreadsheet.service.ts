@@ -28,7 +28,8 @@ type SpreadsheetResult = {
   collectedData?: Record<string, string>;
 };
 
-const userStates: Record<string, SpreadsheetUserState> = {};
+// A Map keeps phone numbers as plain keys, so they can never touch Object.prototype.
+const userStates = new Map<string, SpreadsheetUserState>();
 
 const createTextMessage = (to: string, text: string): WhatsAppTextMessage => ({
   messaging_product: 'whatsapp',
@@ -140,25 +141,26 @@ const handleChatFlowSpreadsheet = async ({
   }
 
   const now = Date.now();
-  if (userStates[from] && userStates[from].lastUpdate) {
-    const diffMs = now - userStates[from].lastUpdate;
+  const existing = userStates.get(from);
+  if (existing && existing.lastUpdate) {
+    const diffMs = now - existing.lastUpdate;
     if (diffMs > 10 * 60 * 1000) {
-      delete userStates[from];
+      userStates.delete(from);
     }
   }
 
-  if (!userStates[from]) {
-    userStates[from] = {
+  let state = userStates.get(from);
+  if (!state) {
+    state = {
       step: 'start',
       data: {},
       lastUpdate: now,
     };
+    userStates.set(from, state);
   }
 
-  const state = userStates[from];
-
   if (state.step !== 'start' && state.step !== 'finished' && text.trim().toLowerCase() === 'cancelar') {
-    delete userStates[from];
+    userStates.delete(from);
     return { responsePayload: createTextMessage(from, 'Request cancelled. Send any message to start again.') };
   }
 

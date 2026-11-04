@@ -67,7 +67,9 @@ const corsOptions = {
 
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+    },
     crossOriginEmbedderPolicy: false,
     hsts: {
       maxAge: 31536000,
@@ -86,10 +88,7 @@ app.use(
   })
 );
 
-// Strict CSP for the API; Swagger UI at /api-docs needs inline scripts and styles.
-const apiCsp = helmet.contentSecurityPolicy({
-  directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
-});
+// Swagger UI at /api-docs needs inline scripts and styles, so it overrides the strict API CSP set above.
 const docsCsp = helmet.contentSecurityPolicy({
   directives: {
     defaultSrc: ["'self'"],
@@ -99,9 +98,7 @@ const docsCsp = helmet.contentSecurityPolicy({
     fontSrc: ["'self'", 'data:'],
   },
 });
-app.use((req: Request, res: Response, next: NextFunction) =>
-  (req.path.startsWith('/api-docs') ? docsCsp : apiCsp)(req, res, next)
-);
+app.use('/api-docs', docsCsp);
 
 app.use(cors(corsOptions));
 app.use(express.json());
