@@ -81,13 +81,13 @@ const generateAppointmentsFromAvailability = async (doctorId: string | undefined
 };
 
 const getAnyAvailabilityIdsForDoctor = async (doctorId: string) => {
-  assertId(doctorId);
+  if (typeof doctorId !== 'string') throw new Error('ID inválido');
   const availabilities = await Availability.find({ doctor: doctorId });
   return availabilities.map((availability) => availability._id);
 };
 
 const generateForDoctor = async (doctorId: string, weeks: number) => {
-  assertId(doctorId);
+  if (typeof doctorId !== 'string') throw new Error('ID inválido');
   const availabilities = await Availability.find({ doctor: doctorId, active: true });
   const appointmentsToCreate = [] as Array<Record<string, unknown>>;
   const now = new Date();
@@ -158,7 +158,7 @@ const getAvailabilityById = async (availabilityId: string) => {
 };
 
 const getAvailabilityIdsForDoctor = async (doctorId: string) => {
-  assertId(doctorId);
+  if (typeof doctorId !== 'string') throw new Error('ID inválido');
   const availabilities = await Availability.find({ doctor: doctorId, active: true });
   if (!availabilities || availabilities.length === 0) {
     return [];
