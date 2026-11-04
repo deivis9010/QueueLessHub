@@ -1,7 +1,7 @@
 # Architecture Guide - QueueLessHub
 
 > For the full skills index (`/coding-standards`, `/testing-requirements`, `/security-guidelines`, etc.),
-> see [.github/copilot-instructions.md](.github/copilot-instructions.md) or load `/coding-standards`
+> see [CLAUDE.md](CLAUDE.md) / [.github/copilot-instructions.md](.github/copilot-instructions.md) or load `/coding-standards`
 > and `/api-design-rules` directly — they are the most relevant skills for this document.
 
 ## Purpose
@@ -164,6 +164,7 @@ If a change breaks one of these boundaries, the change should be treated as a re
 ## Recommended Follow-Up Docs
 
 - [README.md](README.md) -> high-level project overview
+- [CLAUDE.md](CLAUDE.md) -> Claude Code entry point (imports the shared agent rules)
 - [\.github/copilot-instructions.md](.github/copilot-instructions.md) -> agent entry point and operating rules
 - [src/tests/README.md](src/tests/README.md) -> test structure and commands
 - [src/tests/FIXTURES_GUIDE.md](src/tests/FIXTURES_GUIDE.md) -> fixtures and helpers

@@ -36,3 +36,6 @@ coverage/
 
 # Optional eslint cache
 .eslintcache
+
+# Claude Code (personal settings)
+.claude/settings.local.json
