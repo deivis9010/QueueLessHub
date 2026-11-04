@@ -1,6 +1,6 @@
 # Development Guide - QueueLessHub
 
-> For the full skills index, see [.github/copilot-instructions.md](.github/copilot-instructions.md)
+> For the full skills index, see [CLAUDE.md](CLAUDE.md) (Claude Code) or [.github/copilot-instructions.md](.github/copilot-instructions.md) (Copilot)
 > or load `/workflow-commands` and `/pre-commit-checklist` directly — they are the most relevant
 > skills for day-to-day development.
 
@@ -115,6 +115,7 @@ Before asking for review, confirm the following:
 
 ## Docs That Matter Most
 
+- [CLAUDE.md](CLAUDE.md) -> Claude Code entry point (imports the shared agent rules)
 - [\.github/copilot-instructions.md](.github/copilot-instructions.md) -> agent entry point and operating rules
 - [ARCHITECTURE.md](ARCHITECTURE.md) -> layered architecture and dual-flow design
 - [src/tests/README.md](src/tests/README.md) -> test structure and commands

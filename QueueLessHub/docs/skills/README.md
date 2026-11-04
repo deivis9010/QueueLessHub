@@ -1,8 +1,8 @@
 # Project Guidance Reference
 
-This directory remains the detailed documentation source for project guidance. Copilot-discoverable skills live in `.github/skills/`; each skill points to the relevant document here so this documentation can remain the canonical detailed reference.
+This directory remains the detailed documentation source for project guidance. Agent-discoverable skills live in `.github/skills/` (Copilot) and `.claude/skills/` (Claude Code), kept in sync; each skill points to the relevant document here so this documentation can remain the canonical detailed reference.
 
-Load a Copilot skill on demand using:
+Load a skill on demand (same names in Copilot and Claude Code) using:
 
 ```
 /coding-standards        # Code patterns, architecture, layered structure
